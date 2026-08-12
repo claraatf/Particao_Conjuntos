@@ -1,0 +1,15 @@
+# IntelliJ
+.idea/
+*.iml
+*.iws
+out/
+
+# Maven
+target/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Resultados de experimentos gerados localmente
+resultados/*.csv
