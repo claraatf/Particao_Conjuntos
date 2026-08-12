@@ -8,6 +8,8 @@ package br.edu.taal.particao.algorithms;
  */
 public class TempoLimiteExcedidoException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public TempoLimiteExcedidoException(String mensagem) {
         super(mensagem);
     }

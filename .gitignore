@@ -7,6 +7,13 @@ out/
 # Maven
 target/
 
+# Saida da compilacao sem Maven (scripts/executar_sem_maven.*)
+build/
+
+# VS Code: as configuracoes de execucao sao versionadas de proposito,
+# apenas o cache do servidor de linguagem e ignorado.
+.vscode/.java-cache/
+
 # OS
 .DS_Store
 Thumbs.db

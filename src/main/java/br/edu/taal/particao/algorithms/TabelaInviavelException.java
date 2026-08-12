@@ -10,6 +10,8 @@ package br.edu.taal.particao.algorithms;
  */
 public class TabelaInviavelException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public TabelaInviavelException(String mensagem) {
         super(mensagem);
     }

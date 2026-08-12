@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "1. Bateria RAPIDA (cerca de 10 segundos)",
+            "request": "launch",
+            "mainClass": "br.edu.taal.particao.Main",
+            "projectName": "particao-conjuntos",
+            "args": ["--rapido"],
+            "vmArgs": "-Xmx4g",
+            "console": "internalConsole"
+        },
+        {
+            "type": "java",
+            "name": "2. Bateria COMPLETA (1 a 5 minutos)",
+            "request": "launch",
+            "mainClass": "br.edu.taal.particao.Main",
+            "projectName": "particao-conjuntos",
+            "args": [],
+            "vmArgs": "-Xmx4g",
+            "console": "internalConsole"
+        }
+    ]
+}

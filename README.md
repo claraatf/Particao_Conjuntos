@@ -2,6 +2,36 @@
 
 Projeto da disciplina de Técnicas de Análise e Algoritmos (TAAL).
 
+> **Para quem vai avaliar o projeto:** as instruções de execução estão na seção
+> [Como executar](#como-executar), com passo a passo completo para **VS Code**, **IntelliJ IDEA** e
+> **linha de comando**. Existe um caminho de execução que **não exige Maven instalado** —
+> apenas o JDK. Se algo falhar, a seção [Solução de problemas](#solução-de-problemas) cobre os
+> erros mais comuns com a mensagem exata e o que fazer.
+
+---
+
+## Índice
+
+1. [O problema](#o-problema)
+2. [Algoritmos implementados](#algoritmos-implementados)
+3. [Pré-requisito único: o JDK](#pré-requisito-único-o-jdk)
+4. [Como executar](#como-executar)
+   - [Opção A — VS Code](#opção-a--vs-code-passo-a-passo)
+   - [Opção B — IntelliJ IDEA](#opção-b--intellij-idea-passo-a-passo)
+   - [Opção C — Linha de comando sem Maven](#opção-c--linha-de-comando-sem-maven-mais-simples)
+   - [Opção D — Linha de comando com Maven](#opção-d--linha-de-comando-com-maven)
+5. [O que você deve ver ao executar](#o-que-você-deve-ver-ao-executar)
+6. [Executando os testes automatizados](#executando-os-testes-automatizados)
+7. [Solução de problemas](#solução-de-problemas)
+8. [Métricas coletadas](#métricas-coletadas)
+9. [Instâncias de teste](#instâncias-de-teste)
+10. [Estrutura do projeto](#estrutura-do-projeto)
+11. [Saída em CSV](#saída-em-csv)
+12. [Reprodutibilidade](#reprodutibilidade)
+13. [Declaração de uso de IA](#declaração-de-uso-de-ia)
+
+---
+
 ## O problema
 
 Dado um conjunto de números inteiros positivos, dividi-lo em dois subconjuntos cujas somas sejam
@@ -30,11 +60,391 @@ Onde `S` é a soma total dos elementos.
 - **Programação Dinâmica** — reduz o problema a *Subset Sum*: encontra a maior soma alcançável até
   `S/2`. Mantém a tabela completa para reconstruir a partição, e não apenas o valor ótimo. Por ser
   pseudo-polinomial, torna-se inviável em memória quando `S` é grande — o experimento registra isso
-  explicitamente via `TabelaInviavelException`.
+  explicitamente com o status `MEMORIA_INVIAVEL` em vez de derrubar o programa.
 - **Guloso** — ordena decrescente e coloca cada elemento no subconjunto de menor soma atual.
 - **Karmarkar-Karp** — retira repetidamente os dois maiores valores e os substitui pela diferença,
   o que equivale a decidir que ficarão em lados opostos. A partição é reconstruída bicolorindo, por
   busca em largura, a árvore de restrições formada.
+
+---
+
+## Pré-requisito único: o JDK
+
+O projeto precisa do **JDK 17 ou superior**. Não é necessário instalar Maven (veja a
+[Opção C](#opção-c--linha-de-comando-sem-maven-mais-simples)).
+
+### Como verificar se você já tem o JDK
+
+Abra um terminal (PowerShell, Prompt de Comando ou Terminal do Linux/macOS) e execute:
+
+```bash
+javac -version
+```
+
+- Se aparecer algo como `javac 17.0.12` (ou número maior), **está tudo certo**, pule para
+  [Como executar](#como-executar).
+- Se aparecer `javac não é reconhecido` / `command not found`, siga a instalação abaixo.
+
+> **Atenção:** `java -version` funcionar **não** é suficiente. É preciso que `javac -version`
+> também funcione, pois `java` sozinho indica apenas o JRE, que não compila código.
+
+### Como instalar o JDK 17
+
+**Windows**
+
+1. Baixe o instalador em <https://adoptium.net/temurin/releases/?version=17> escolhendo
+   *Operating System: Windows*, *Architecture: x64*, *Package Type: JDK*, arquivo `.msi`.
+2. Execute o instalador. Na tela de opções, marque **"Set JAVA_HOME variable"** e
+   **"Add to PATH"** (por padrão vêm desabilitadas).
+3. **Feche e reabra o terminal** (a alteração de PATH só vale em terminais novos).
+4. Confirme com `javac -version`.
+
+**Linux (Ubuntu/Debian)**
+
+```bash
+sudo apt update && sudo apt install openjdk-17-jdk
+```
+
+**macOS (com Homebrew)**
+
+```bash
+brew install --cask temurin@17
+```
+
+---
+
+## Como executar
+
+Escolha **uma** das quatro opções abaixo. Todas produzem o mesmo resultado.
+
+O programa tem dois modos:
+
+| Modo | Como acionar | Duração | Para que serve |
+|------|--------------|---------|----------------|
+| **Rápido** | argumento `--rapido` | ~10 segundos | confirmar que o ambiente funciona |
+| **Completo** | sem argumentos | 1 a 5 minutos | gerar os dados do relatório |
+
+> **Sugestão:** rode primeiro no modo rápido. Se ele funcionar, o completo também funcionará.
+
+---
+
+### Opção A — VS Code (passo a passo)
+
+**Passo 1 — Instalar a extensão de Java**
+
+1. Abra o VS Code.
+2. Clique no ícone de **Extensões** na barra lateral esquerda (ou pressione `Ctrl+Shift+X`).
+3. Digite na busca: `Extension Pack for Java`.
+4. Instale o pacote publicado pela **Microsoft** (identificador `vscjava.vscode-java-pack`).
+   Ele já inclui tudo o que é necessário: suporte a Java, depurador, Maven e testes.
+5. Aguarde a instalação terminar (aparece uma notificação no canto inferior direito).
+
+> Este projeto já contém um arquivo `.vscode/extensions.json`, então o VS Code também deve sugerir
+> essa extensão automaticamente ao abrir a pasta.
+
+**Passo 2 — Abrir o projeto**
+
+1. Menu **File > Open Folder...** (`Arquivo > Abrir Pasta...`).
+2. Selecione a pasta **`TAAL`** — a pasta que contém o arquivo `pom.xml`.
+   *Importante:* selecione a pasta em si, e não uma subpasta como `src`.
+3. Se o VS Code perguntar *"Do you trust the authors of the files in this folder?"*, clique em
+   **Yes, I trust the authors**. Sem isso o Java não é carregado.
+
+**Passo 3 — Aguardar a importação**
+
+Na barra inferior aparecerá um indicador de progresso (`Importing Java projects...` ou um ícone
+girando). **Aguarde até ele desaparecer** — na primeira vez pode levar de 1 a 3 minutos, porque a
+extensão baixa as dependências.
+
+> Você **não** precisa ter o Maven instalado: a extensão de Java do VS Code traz um Maven embutido.
+
+**Passo 4 — Executar**
+
+Existem duas formas. A primeira é a mais direta:
+
+*Forma 1 — pelo painel Run and Debug (recomendada)*
+
+1. Clique no ícone **Run and Debug** na barra lateral (ou pressione `Ctrl+Shift+D`).
+2. No menu suspenso no topo do painel, escolha **"1. Bateria RAPIDA (cerca de 10 segundos)"**.
+   Essas configurações já vêm prontas no arquivo `.vscode/launch.json`.
+3. Clique no botão verde ▶ (ou pressione `F5`).
+4. A saída aparece na aba **DEBUG CONSOLE**, na parte inferior da tela.
+5. Para a bateria completa, repita escolhendo **"2. Bateria COMPLETA (1 a 5 minutos)"**.
+
+*Forma 2 — pelo botão Run acima do método `main`*
+
+1. No explorador de arquivos, abra
+   `src/main/java/br/edu/taal/particao/Main.java`.
+2. Logo acima da linha `public static void main(String[] args)` aparecerá um link **Run | Debug**.
+3. Clique em **Run**. Isso executa a **bateria completa** (sem o argumento `--rapido`).
+4. A saída aparece na aba **TERMINAL**.
+
+**Passo 5 — Conferir o resultado**
+
+Ao final, o programa informa onde gravou o CSV, por exemplo:
+
+```
+Resultados gravados em: C:\...\TAAL\resultados\resultados_rapido.csv
+```
+
+O arquivo aparecerá na pasta `resultados/` dentro do projeto.
+
+---
+
+### Opção B — IntelliJ IDEA (passo a passo)
+
+**Passo 1 — Abrir o projeto**
+
+1. Na tela inicial do IntelliJ, clique em **Open** (ou menu **File > Open...**).
+2. Selecione a pasta **`TAAL`** — a que contém o `pom.xml` — e clique em **OK**.
+3. Se aparecer a caixa *"Trust and Open Project?"*, clique em **Trust Project**.
+
+**Passo 2 — Aguardar a importação do Maven**
+
+1. O IntelliJ detecta o `pom.xml` automaticamente e começa a importar.
+2. Na barra inferior aparece *"Resolving Maven dependencies..."*. **Aguarde terminar**
+   (1 a 3 minutos na primeira vez).
+3. Se aparecer uma notificação *"Maven build script found"* com o botão **Load Maven Project** ou
+   **Load**, clique nele.
+
+> O IntelliJ possui um Maven embutido, então não é necessário instalar Maven separadamente.
+
+**Passo 3 — Verificar o JDK do projeto**
+
+1. Menu **File > Project Structure...** (`Ctrl+Alt+Shift+S`).
+2. Em **Project Settings > Project**, confira o campo **SDK**.
+3. Se estiver vazio ou marcado com `<No SDK>`, clique no campo, escolha **Add SDK > Download JDK...**,
+   selecione a versão **17** e clique em **Download**.
+4. Confirme que **Language level** está em **17** ou superior.
+5. Clique em **OK**.
+
+**Passo 4 — Executar**
+
+1. No painel de projeto à esquerda, navegue até
+   `src/main/java/br/edu/taal/particao/Main.java` e dê um duplo clique para abrir.
+2. Clique no **triângulo verde ▶** ao lado da linha `public class Main` (ou ao lado do método
+   `main`) e escolha **Run 'Main.main()'**.
+3. A saída aparece na janela **Run**, na parte inferior.
+
+Isso executa a **bateria completa**. Para rodar a bateria rápida:
+
+1. Menu **Run > Edit Configurations...**.
+2. Selecione a configuração **Main** na lista à esquerda.
+3. No campo **Program arguments**, digite: `--rapido`
+4. No campo **VM options**, digite: `-Xmx4g`
+   *(Se o campo VM options não estiver visível, clique em **Modify options > Add VM options**.)*
+5. Clique em **OK** e execute novamente com ▶.
+
+---
+
+### Opção C — Linha de comando sem Maven (mais simples)
+
+Esta opção precisa **apenas do JDK**. Use se as opções anteriores derem problema.
+
+**Windows (PowerShell)**
+
+1. Abra o **PowerShell**.
+2. Navegue até a pasta do projeto. Exemplo:
+
+```powershell
+cd "C:\Users\SeuUsuario\Desktop\TAAL"
+```
+
+3. Execute a bateria rápida:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\executar_sem_maven.ps1 -Rapido
+```
+
+4. Para a bateria completa, basta omitir `-Rapido`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\executar_sem_maven.ps1
+```
+
+> O trecho `-ExecutionPolicy Bypass` evita o erro *"a execução de scripts foi desabilitada neste
+> sistema"*, comum em instalações padrão do Windows.
+
+**Linux / macOS / Git Bash**
+
+```bash
+bash scripts/executar_sem_maven.sh --rapido
+```
+
+```bash
+bash scripts/executar_sem_maven.sh
+```
+
+O script verifica se o JDK está instalado, compila as 16 classes em `build/classes` e executa o
+programa, exibindo mensagens claras em cada etapa.
+
+**Se preferir digitar os comandos manualmente**, sem usar o script:
+
+*Windows (PowerShell), a partir da pasta do projeto:*
+
+```powershell
+javac -encoding UTF-8 -d build\classes (Get-ChildItem -Path src\main\java -Filter *.java -Recurse | ForEach-Object { $_.FullName })
+```
+
+```powershell
+java -Xmx4g -cp build\classes br.edu.taal.particao.Main --rapido
+```
+
+*Linux / macOS / Git Bash:*
+
+```bash
+javac -encoding UTF-8 -d build/classes $(find src/main/java -name "*.java")
+```
+
+```bash
+java -Xmx4g -cp build/classes br.edu.taal.particao.Main --rapido
+```
+
+---
+
+### Opção D — Linha de comando com Maven
+
+Use apenas se você **já tem o Maven instalado** (verifique com `mvn -version`).
+
+```bash
+mvn clean package
+```
+
+```bash
+java -Xmx4g -jar target/particao-conjuntos-1.0-SNAPSHOT.jar --rapido
+```
+
+Para a bateria completa, omita o `--rapido`:
+
+```bash
+java -Xmx4g -jar target/particao-conjuntos-1.0-SNAPSHOT.jar
+```
+
+Também existem scripts que fazem as duas etapas de uma vez:
+
+```bash
+bash scripts/executar_experimentos.sh
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\executar_experimentos.ps1
+```
+
+### Argumentos aceitos pelo programa
+
+Todos são opcionais e podem ser combinados em qualquer ordem:
+
+| Argumento | Significado | Padrão |
+|-----------|-------------|--------|
+| `--rapido` | executa a bateria reduzida | ausente (bateria completa) |
+| primeiro número | *seed* do gerador de instâncias | `42` |
+| segundo valor | caminho do arquivo CSV de saída | `resultados/resultados.csv` |
+
+Exemplo com todos os argumentos:
+
+```bash
+java -Xmx4g -cp build/classes br.edu.taal.particao.Main 7 saida/meu_teste.csv --rapido
+```
+
+---
+
+## O que você deve ver ao executar
+
+O programa imprime o ambiente, o progresso instância por instância e, ao final, um resumo.
+A execução no modo rápido termina em cerca de 10 segundos com uma saída semelhante a esta:
+
+```
+=== Problema da Particao de Conjuntos - Estudo Comparativo ===
+Modo: RAPIDO (bateria reduzida, cerca de 10 segundos)
+Seed: 42
+Ambiente: Java 17.0.12 | Windows 11 | processadores disponiveis: 12 | memoria maxima da JVM: 4018 MB
+
+Instancia uniforme_pequeno_n10_v0          (n=   10, soma=490)
+   Backtracking           diferenca=0            tempo=    0.030 ms  estados=123          gap=0.00%
+   BranchAndBound         diferenca=0            tempo=    0.045 ms  estados=160          gap=0.00%
+   ProgramacaoDinamica    diferenca=0            tempo=    0.447 ms  estados=2460         gap=0.00%
+   Guloso                 diferenca=0            tempo=    0.009 ms  estados=10           gap=0.00%
+   KarmarkarKarp          diferenca=0            tempo=    0.074 ms  estados=9            gap=0.00%
+   ...
+
+Bateria concluida em 7.0 segundos (210 execucoes).
+Resultados gravados em: ...\TAAL\resultados\resultados_rapido.csv
+
+=== Resumo por algoritmo ===
+Algoritmo               Execucoes   Sucessos     % Otimos Tempo medio(ms)
+Backtracking                   30         30      100.0%          0.822
+BranchAndBound                 30         30      100.0%          0.119
+ProgramacaoDinamica            50         36      100.0%         45.187
+Guloso                         50         50       52.0%          0.151
+KarmarkarKarp                  50         50       74.0%          0.141
+```
+
+Duas observações importantes sobre essa saída, porque **não são erros**:
+
+- Linhas com **`MEMORIA_INVIAVEL`** na Programação Dinâmica são um **resultado esperado e
+  desejado** do experimento: demonstram o limite prático da abordagem pseudo-polinomial. É por isso
+  que a coluna "Sucessos" da Programação Dinâmica é menor que "Execucoes".
+- Os algoritmos exatos aparecem com menos execuções que os heurísticos porque **não** são
+  submetidos a instâncias acima de 26 elementos, onde levariam tempo exponencial sem acrescentar
+  informação nova.
+
+Os números exatos de tempo variam conforme a máquina; as proporções entre algoritmos, não.
+
+---
+
+## Executando os testes automatizados
+
+Os testes verificam corretude: preservação da soma total, concordância entre os três algoritmos
+exatos, heurísticas nunca superando o ótimo e reprodutibilidade do gerador.
+
+**No VS Code:** clique no ícone de **Testing** (frasco de laboratório) na barra lateral e no botão
+▶ **Run Tests**. Também é possível abrir `src/test/java/br/edu/taal/particao/PartitionAlgorithmsTest.java`
+e clicar no ▶ ao lado de cada teste.
+
+**No IntelliJ:** abra o mesmo arquivo e clique no ▶ ao lado da declaração da classe, escolhendo
+**Run 'PartitionAlgorithmsTest'**.
+
+**Por linha de comando (requer Maven):**
+
+```bash
+mvn test
+```
+
+> Os testes usam JUnit 5, cuja biblioteca é baixada pelo Maven. Por isso eles **não** rodam pelo
+> caminho da [Opção C](#opção-c--linha-de-comando-sem-maven-mais-simples), que não baixa
+> dependências. Isso não afeta a execução dos experimentos, que independe de bibliotecas externas.
+
+---
+
+## Solução de problemas
+
+| Mensagem de erro | Causa | Solução |
+|------------------|-------|---------|
+| `javac não é reconhecido como um comando` / `javac: command not found` | JDK não instalado ou fora do PATH | Instale o JDK 17 conforme [esta seção](#como-instalar-o-jdk-17) e **reabra o terminal** |
+| `java -version` funciona mas `javac -version` não | Só o JRE está instalado | Instale o **JDK** (não o JRE) |
+| `A execução de scripts foi desabilitada neste sistema` | Política padrão do PowerShell | Use o comando completo com `powershell -ExecutionPolicy Bypass -File ...` como mostrado na Opção C |
+| VS Code não mostra o botão **Run** sobre o `main` | Extensão de Java não instalada ou projeto ainda importando | Instale o *Extension Pack for Java* e aguarde a barra de progresso terminar |
+| VS Code: `The declared package does not match the expected package` | A pasta aberta não é a raiz do projeto | Feche e abra novamente a pasta **`TAAL`**, a que contém o `pom.xml` |
+| IntelliJ: `Cannot resolve symbol` em várias classes | Projeto Maven não foi importado | Clique com o botão direito no `pom.xml` > **Maven > Reload project** |
+| IntelliJ: `Project SDK is not defined` | JDK não configurado no projeto | **File > Project Structure > Project > SDK** e selecione o JDK 17 |
+| `UnsupportedClassVersionError` | JDK anterior ao 17 | Instale o JDK 17 ou superior e reconfigure a IDE |
+| `mvn não é reconhecido` | Maven não instalado | Use a [Opção C](#opção-c--linha-de-comando-sem-maven-mais-simples), que dispensa o Maven |
+| `OutOfMemoryError: Java heap space` | Pouca memória para a JVM | Rode com `-Xmx4g`. Se a máquina tiver pouca RAM, use `--rapido` |
+| O programa parece travado | Bateria completa em andamento | É normal levar de 1 a 5 minutos. Use `--rapido` para verificar rapidamente |
+| `MEMORIA_INVIAVEL` na saída | **Não é erro** | É um resultado esperado do experimento, veja [esta observação](#o-que-você-deve-ver-ao-executar) |
+
+Se nenhuma das opções acima resolver, o caminho mais confiável é o manual, que depende apenas do
+JDK — execute a partir da pasta do projeto:
+
+```bash
+javac -encoding UTF-8 -d build/classes $(find src/main/java -name "*.java")
+```
+
+```bash
+java -cp build/classes br.edu.taal.particao.Main --rapido
+```
+
+---
 
 ## Métricas coletadas
 
@@ -49,6 +459,10 @@ Para cada execução (`Metrics` e `ExecutionRecord`):
 - diferença encontrada, diferença ótima de referência, GAP percentual e se atingiu o ótimo;
 - status: `SUCESSO`, `TEMPO_LIMITE`, `MEMORIA_INVIAVEL` ou `ERRO`.
 
+O *warm-up* existe porque a JVM compila o código sob demanda (JIT): as primeiras execuções de um
+método são interpretadas e, portanto, muito mais lentas. Medir sem aquecer produziria tempos que
+refletem o compilador, e não o algoritmo.
+
 ## Instâncias de teste
 
 `InstanceGenerator` produz cinco perfis, todos reprodutíveis a partir de uma *seed*:
@@ -61,69 +475,47 @@ Para cada execução (`Metrics` e `ExecutionRecord`):
 | `PARTICAO_PERFEITA` | diferença zero garantida por construção | mede corretude |
 | `DOMINANTE` | um valor maior que a soma dos demais | caso clássico de dificuldade para o guloso |
 
-Cada perfil é combinado com vários tamanhos e 5 variações, formando a bateria completa
-(~1000 execuções por rodada).
-
-## Como executar
-
-### No IntelliJ IDEA
-
-1. `File > Open` e selecione a pasta do projeto (o IntelliJ detecta o `pom.xml` automaticamente).
-2. Aguarde a importação das dependências Maven.
-3. Abra `src/main/java/br/edu/taal/particao/Main.java` e clique em **Run**.
-4. Os resultados vão para o console e para `resultados/resultados.csv`.
-
-Recomenda-se aumentar a memória da JVM em `Run > Edit Configurations > VM options`:
-
-```
--Xmx4g
-```
-
-### Pela linha de comando
-
-```bash
-mvn clean package
-```
-
-```bash
-java -Xmx4g -jar target/particao-conjuntos-1.0-SNAPSHOT.jar 42 resultados/resultados.csv
-```
-
-Os dois argumentos são opcionais: a *seed* (padrão `42`) e o arquivo de saída
-(padrão `resultados/resultados.csv`). Usar a mesma seed reproduz exatamente a mesma bateria.
-
-### Testes
-
-```bash
-mvn test
-```
-
-Os testes verificam corretude: preservação da soma total, concordância entre os três algoritmos
-exatos, heurísticas nunca superando o ótimo e reprodutibilidade do gerador.
+Cada perfil é combinado com vários tamanhos (10, 15, 20, 22, 24, 26, 100, 1.000 e 10.000 elementos)
+e 5 variações, formando a bateria completa de aproximadamente 1.000 execuções.
 
 ## Estrutura do projeto
 
 ```
-src/main/java/br/edu/taal/particao/
-├── Main.java                          # bateria de experimentos e relatório no console
-├── model/
-│   ├── Instance.java                  # instância do problema
-│   ├── Metrics.java                   # métricas de uma execução
-│   └── PartitionResult.java           # resultado + cálculo de GAP
-├── algorithms/
-│   ├── PartitionAlgorithm.java        # contrato comum
-│   ├── BacktrackingPartition.java
-│   ├── BranchAndBoundPartition.java
-│   ├── DynamicProgrammingPartition.java
-│   ├── GreedyPartition.java
-│   ├── KarmarkarKarpPartition.java
-│   ├── TabelaInviavelException.java
-│   └── TempoLimiteExcedidoException.java
-└── experiment/
-    ├── InstanceGenerator.java         # geração reprodutível de instâncias
-    ├── ExperimentRunner.java          # execução com warm-up e tempo limite
-    ├── ExecutionRecord.java           # uma linha da tabela de resultados
-    └── CsvWriter.java                 # exportação para análise
+TAAL/
+├── pom.xml                            # configuração Maven
+├── README.md
+├── .vscode/                           # configurações de execução do VS Code
+│   ├── extensions.json
+│   ├── launch.json
+│   └── settings.json
+├── scripts/
+│   ├── executar_sem_maven.ps1         # compila e roda usando apenas o JDK (Windows)
+│   ├── executar_sem_maven.sh          # idem (Linux/macOS/Git Bash)
+│   ├── executar_experimentos.ps1      # via Maven (Windows)
+│   └── executar_experimentos.sh       # via Maven (Linux/macOS)
+└── src/
+    ├── main/java/br/edu/taal/particao/
+    │   ├── Main.java                          # bateria de experimentos e relatório
+    │   ├── model/
+    │   │   ├── Instance.java                  # instância do problema
+    │   │   ├── Metrics.java                   # métricas de uma execução
+    │   │   └── PartitionResult.java           # resultado + cálculo de GAP
+    │   ├── algorithms/
+    │   │   ├── PartitionAlgorithm.java        # contrato comum
+    │   │   ├── BacktrackingPartition.java
+    │   │   ├── BranchAndBoundPartition.java
+    │   │   ├── DynamicProgrammingPartition.java
+    │   │   ├── GreedyPartition.java
+    │   │   ├── KarmarkarKarpPartition.java
+    │   │   ├── TabelaInviavelException.java
+    │   │   └── TempoLimiteExcedidoException.java
+    │   └── experiment/
+    │       ├── InstanceGenerator.java         # geração reprodutível de instâncias
+    │       ├── ExperimentRunner.java          # execução com warm-up e tempo limite
+    │       ├── ExecutionRecord.java           # uma linha da tabela de resultados
+    │       └── CsvWriter.java                 # exportação para análise
+    └── test/java/br/edu/taal/particao/
+        └── PartitionAlgorithmsTest.java       # testes de corretude
 ```
 
 ## Saída em CSV
@@ -136,11 +528,24 @@ diferenca_referencia, gap_percentual, atingiu_otimo, tempo_ms, memoria_mb,
 estados_explorados, chamadas_recursivas, podas, profundidade_maxima, observacao
 ```
 
-Basta importar em uma planilha ou ferramenta estatística para montar as tabelas e gráficos do
-relatório técnico.
+O separador decimal é o **ponto** e o separador de colunas é a **vírgula**. Ao abrir no Excel em
+português, use **Dados > Obter Dados > De Texto/CSV** e selecione origem **UTF-8** para que os
+números sejam interpretados corretamente.
 
 ## Reprodutibilidade
 
-Para que os experimentos sejam reprodutíveis, registre no relatório: modelo do processador, memória
-RAM, sistema operacional, versão do JDK, valor de `-Xmx` e a *seed* utilizada. As três primeiras
-linhas impressas pelo programa já reportam parte dessas informações.
+A mesma *seed* sempre gera exatamente as mesmas instâncias, em qualquer máquina. Para reproduzir os
+resultados do relatório, use a seed padrão (`42`).
+
+Para que os experimentos sejam reprodutíveis, o relatório registra: modelo do processador, memória
+RAM, sistema operacional, versão do JDK, valor de `-Xmx` e a *seed* utilizada. As primeiras linhas
+impressas pelo programa já reportam parte dessas informações automaticamente.
+
+## Declaração de uso de IA
+
+Conforme o normativo da disciplina, declaramos que ferramentas de IA generativa foram utilizadas
+como apoio à organização do código, à redação de documentação e à estruturação do texto. As
+decisões de projeto, a escolha dos algoritmos comparados, o desenho experimental e a análise crítica
+dos resultados são de autoria da equipe.
+
+*(Ajuste esta seção conforme o uso real feito pela equipe antes da entrega.)*

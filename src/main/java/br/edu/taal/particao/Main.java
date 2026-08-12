@@ -27,24 +27,50 @@ import java.util.Locale;
  * tamanhos, gravando todos os resultados em CSV e imprimindo um resumo no
  * console.</p>
  *
- * <p>Uso: {@code java -jar particao-conjuntos.jar [seed] [arquivoSaida]}</p>
+ * <p>Uso: {@code java -jar particao-conjuntos.jar [seed] [arquivoSaida] [--rapido]}</p>
+ *
+ * <p>A opcao {@code --rapido} executa uma bateria reduzida (cerca de 10
+ * segundos), util para verificar rapidamente que o ambiente esta
+ * configurado. Sem ela, a bateria completa e executada.</p>
  */
 public class Main {
 
-    /** Tamanhos usados com algoritmos exponenciais (Backtracking / Branch and Bound). */
-    private static final int[] TAMANHOS_EXPONENCIAIS = {10, 15, 20, 22, 24, 26};
+    /** Tamanhos da bateria completa. */
+    private static final int[] TAMANHOS_COMPLETO = {10, 15, 20, 22, 24, 26, 100, 1_000, 10_000};
 
-    /** Tamanhos usados com os algoritmos de tempo polinomial ou pseudo-polinomial. */
-    private static final int[] TAMANHOS_ESCALAVEIS = {20, 100, 1_000, 10_000};
+    /** Tamanhos da bateria reduzida (modo --rapido). */
+    private static final int[] TAMANHOS_RAPIDO = {10, 15, 20, 100, 1_000};
 
-    private static final int VARIACOES_POR_CONFIGURACAO = 5;
+    private static final int VARIACOES_COMPLETO = 5;
+    private static final int VARIACOES_RAPIDO = 2;
+
     private static final long TEMPO_LIMITE_SEGUNDOS = 30;
 
+    /**
+     * Acima deste tamanho os algoritmos exponenciais nao sao executados: eles
+     * apenas consumiriam o tempo limite sem gerar informacao nova. O corte
+     * corresponde a cerca de 2^26 estados no pior caso.
+     */
+    private static final int LIMITE_ALGORITMOS_EXPONENCIAIS = 26;
+
     public static void main(String[] args) throws IOException {
-        long seed = args.length > 0 ? Long.parseLong(args[0]) : 42L;
-        Path arquivoSaida = args.length > 1
-                ? Paths.get(args[1])
-                : Paths.get("resultados", "resultados.csv");
+        boolean modoRapido = false;
+        List<String> posicionais = new ArrayList<>();
+        for (String argumento : args) {
+            if ("--rapido".equalsIgnoreCase(argumento)) {
+                modoRapido = true;
+            } else {
+                posicionais.add(argumento);
+            }
+        }
+
+        long seed = !posicionais.isEmpty() ? Long.parseLong(posicionais.get(0)) : 42L;
+        Path arquivoSaida = posicionais.size() > 1
+                ? Paths.get(posicionais.get(1))
+                : Paths.get("resultados", modoRapido ? "resultados_rapido.csv" : "resultados.csv");
+
+        int[] tamanhos = modoRapido ? TAMANHOS_RAPIDO : TAMANHOS_COMPLETO;
+        int variacoes = modoRapido ? VARIACOES_RAPIDO : VARIACOES_COMPLETO;
 
         InstanceGenerator gerador = new InstanceGenerator(seed);
         ExperimentRunner runner = new ExperimentRunner(TEMPO_LIMITE_SEGUNDOS, 1, 3);
@@ -57,6 +83,9 @@ public class Main {
                 new KarmarkarKarpPartition());
 
         System.out.println("=== Problema da Particao de Conjuntos - Estudo Comparativo ===");
+        System.out.println("Modo: " + (modoRapido
+                ? "RAPIDO (bateria reduzida, cerca de 10 segundos)"
+                : "COMPLETO (bateria integral, tipicamente 1 a 5 minutos)"));
         System.out.println("Seed: " + seed);
         System.out.println("Ambiente: Java " + System.getProperty("java.version")
                 + " | " + System.getProperty("os.name")
@@ -65,11 +94,12 @@ public class Main {
                 + (Runtime.getRuntime().maxMemory() / (1024 * 1024)) + " MB");
         System.out.println();
 
+        long inicioTotal = System.nanoTime();
         List<ExecutionRecord> todosRegistros = new ArrayList<>();
 
         for (InstanceGenerator.Perfil perfil : InstanceGenerator.Perfil.values()) {
-            for (int tamanho : tamanhosParaPerfil()) {
-                for (int variacao = 0; variacao < VARIACOES_POR_CONFIGURACAO; variacao++) {
+            for (int tamanho : tamanhos) {
+                for (int variacao = 0; variacao < variacoes; variacao++) {
                     Instance instancia = gerador.gerar(perfil, tamanho, variacao);
                     List<ExecutionRecord> registrosDaInstancia = new ArrayList<>();
 
@@ -89,30 +119,21 @@ public class Main {
         }
 
         new CsvWriter().escrever(arquivoSaida, todosRegistros);
+
+        double duracaoSegundos = (System.nanoTime() - inicioTotal) / 1_000_000_000.0;
         System.out.println();
+        System.out.printf(Locale.US, "Bateria concluida em %.1f segundos (%d execucoes).%n",
+                duracaoSegundos, todosRegistros.size());
         System.out.println("Resultados gravados em: " + arquivoSaida.toAbsolutePath());
         imprimirResumo(todosRegistros);
     }
 
-    /** Uniao dos tamanhos exponenciais e escalaveis, sem repeticoes, em ordem crescente. */
-    private static int[] tamanhosParaPerfil() {
-        return java.util.stream.IntStream
-                .concat(Arrays.stream(TAMANHOS_EXPONENCIAIS), Arrays.stream(TAMANHOS_ESCALAVEIS))
-                .distinct()
-                .sorted()
-                .toArray();
-    }
-
-    /**
-     * Evita submeter algoritmos exponenciais a instancias grandes demais, o
-     * que apenas consumiria o tempo limite sem gerar informacao nova. O corte
-     * em 26 elementos corresponde a cerca de 2^26 estados no pior caso.
-     */
+    /** Evita submeter algoritmos exponenciais a instancias grandes demais. */
     private static boolean deveExecutar(PartitionAlgorithm algoritmo, int tamanho) {
         boolean exponencial = algoritmo instanceof BacktrackingPartition
                 || algoritmo instanceof BranchAndBoundPartition;
         if (exponencial) {
-            return tamanho <= 26;
+            return tamanho <= LIMITE_ALGORITMOS_EXPONENCIAIS;
         }
         return true;
     }
