@@ -102,8 +102,13 @@ public class ExperimentRunner {
      * Preenche, em cada registro do grupo, a diferenca otima de referencia:
      * a menor diferenca obtida por algum algoritmo exato que concluiu com
      * sucesso. Sem isso nao e possivel calcular o GAP das heuristicas.
-     * Quando nenhum algoritmo exato conclui, a melhor solucao conhecida
-     * (de qualquer algoritmo) e usada como referencia aproximada.
+     *
+     * <p>Quando nenhum algoritmo exato conclui (instancias grandes), a melhor
+     * solucao conhecida entre as heuristicas e usada como referencia, porem
+     * marcada como <em>nao comprovada</em>. A distincao importa: nesses casos
+     * "atingiu o otimo" significa apenas "igualou a melhor solucao conhecida",
+     * e tratar os dois casos como equivalentes inflaria artificialmente a taxa
+     * de acerto das heuristicas.</p>
      */
     public void definirReferenciaOtima(List<ExecutionRecord> registrosDaInstancia) {
         Long melhorExata = null;
@@ -123,8 +128,9 @@ public class ExperimentRunner {
         }
 
         Long referencia = melhorExata != null ? melhorExata : melhorQualquer;
+        boolean comprovada = melhorExata != null;
         for (ExecutionRecord registro : registrosDaInstancia) {
-            registro.setDiferencaOtimaReferencia(referencia);
+            registro.setDiferencaOtimaReferencia(referencia, comprovada);
         }
     }
 }

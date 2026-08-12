@@ -29,7 +29,10 @@ public class CsvWriter {
             "soma_b",
             "diferenca",
             "diferenca_referencia",
+            "referencia_comprovada",
+            "gap_absoluto",
             "gap_percentual",
+            "desequilibrio_relativo_pct",
             "atingiu_otimo",
             "tempo_ms",
             "memoria_mb",
@@ -70,8 +73,11 @@ public class CsvWriter {
             linha.append(resultado.getSomaB()).append(',');
             linha.append(resultado.getDiferenca()).append(',');
             linha.append(valorOuVazio(registro.getDiferencaOtimaReferencia())).append(',');
+            linha.append(registro.isReferenciaComprovada()).append(',');
+            linha.append(valorOuVazio(registro.getGapAbsoluto())).append(',');
             Double gap = registro.getGapPercentual();
             linha.append(gap == null ? "" : String.format(Locale.US, "%.4f", gap)).append(',');
+            linha.append(String.format(Locale.US, "%.6f", resultado.getDesequilibrioRelativo())).append(',');
             linha.append(valorOuVazio(registro.atingiuOtimo())).append(',');
             linha.append(String.format(Locale.US, "%.4f", metricas.getTempoExecucaoMillis())).append(',');
             linha.append(String.format(Locale.US, "%.4f", metricas.getMemoriaUsadaMB())).append(',');
@@ -80,8 +86,8 @@ public class CsvWriter {
             linha.append(metricas.getPodasRealizadas()).append(',');
             linha.append(metricas.getProfundidadeMaxima()).append(',');
         } else {
-            // 12 colunas de metricas ficam vazias quando a execucao nao concluiu.
-            linha.append(",".repeat(12));
+            // 15 colunas de metricas ficam vazias quando a execucao nao concluiu.
+            linha.append(",".repeat(15));
         }
 
         linha.append(escapar(registro.getObservacao()));

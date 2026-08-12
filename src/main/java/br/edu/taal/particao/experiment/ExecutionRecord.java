@@ -30,6 +30,12 @@ public class ExecutionRecord {
 
     private Long diferencaOtimaReferencia;
 
+    /**
+     * Indica se a referencia veio de um algoritmo exato (otimo comprovado) ou
+     * apenas da melhor heuristica disponivel (melhor solucao conhecida).
+     */
+    private boolean referenciaComprovada;
+
     public ExecutionRecord(String perfil, int tamanho, String nomeInstancia, String nomeAlgoritmo,
                            boolean exato, Status status, PartitionResult resultado, String observacao) {
         this.perfil = perfil;
@@ -90,15 +96,24 @@ public class ExecutionRecord {
         return status == Status.SUCESSO && resultado != null;
     }
 
-    public void setDiferencaOtimaReferencia(Long diferencaOtimaReferencia) {
+    public void setDiferencaOtimaReferencia(Long diferencaOtimaReferencia, boolean referenciaComprovada) {
         this.diferencaOtimaReferencia = diferencaOtimaReferencia;
+        this.referenciaComprovada = referenciaComprovada;
     }
 
     public Long getDiferencaOtimaReferencia() {
         return diferencaOtimaReferencia;
     }
 
-    /** GAP percentual em relacao a referencia otima, ou null se indisponivel. */
+    public boolean isReferenciaComprovada() {
+        return referenciaComprovada;
+    }
+
+    /**
+     * GAP percentual em relacao a referencia otima. Retorna null quando
+     * indisponivel ou matematicamente indefinido (otimo igual a zero) &mdash;
+     * nesses casos use {@link #getGapAbsoluto()} ou o desequilibrio relativo.
+     */
     public Double getGapPercentual() {
         if (!isSucesso() || diferencaOtimaReferencia == null) {
             return null;
@@ -106,8 +121,28 @@ public class ExecutionRecord {
         return resultado.calcularGapPercentual(diferencaOtimaReferencia);
     }
 
-    /** Indica se o algoritmo atingiu exatamente a diferenca otima de referencia. */
+    /** GAP absoluto (diferenca encontrada menos a otima), sempre definido. */
+    public Long getGapAbsoluto() {
+        if (!isSucesso() || diferencaOtimaReferencia == null) {
+            return null;
+        }
+        return resultado.calcularGapAbsoluto(diferencaOtimaReferencia);
+    }
+
+    /**
+     * Indica se o algoritmo atingiu o otimo <em>comprovado</em>. Retorna null
+     * quando nao ha otimo comprovado para a instancia, evitando que "igualou a
+     * melhor heuristica" seja contabilizado como "encontrou o otimo".
+     */
     public Boolean atingiuOtimo() {
+        if (!isSucesso() || diferencaOtimaReferencia == null || !referenciaComprovada) {
+            return null;
+        }
+        return resultado.getDiferenca() == diferencaOtimaReferencia;
+    }
+
+    /** Indica se o algoritmo igualou a melhor solucao conhecida, comprovada ou nao. */
+    public Boolean igualouMelhorConhecida() {
         if (!isSucesso() || diferencaOtimaReferencia == null) {
             return null;
         }

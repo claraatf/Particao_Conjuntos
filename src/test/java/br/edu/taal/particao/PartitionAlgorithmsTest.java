@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PartitionAlgorithmsTest {
@@ -137,6 +138,60 @@ class PartitionAlgorithmsTest {
 
         assertTrue(Arrays.equals(a.getElementos(), b.getElementos()),
                 "Mesma seed deveria produzir a mesma instancia");
+    }
+
+    @Test
+    void gapPercentualDeveSerIndefinidoQuandoOtimoEZero() {
+        Instance instancia = new Instance("perfeita", new int[]{10, 20, 15, 5, 25, 15});
+        PartitionResult heuristica = new GreedyPartition().solve(instancia);
+        PartitionResult exato = new DynamicProgrammingPartition().solve(instancia);
+
+        assertEquals(0, exato.getDiferenca(), "o otimo desta instancia e zero");
+
+        // Com otimo zero, o GAP relativo e uma divisao por zero: deve ser nulo
+        // em vez de um valor arbitrario que mascare a qualidade real.
+        if (heuristica.getDiferenca() > 0) {
+            assertNull(heuristica.calcularGapPercentual(0),
+                    "GAP percentual deveria ser indefinido quando o otimo e zero");
+            assertEquals(heuristica.getDiferenca(), heuristica.calcularGapAbsoluto(0),
+                    "GAP absoluto deveria continuar definido");
+        }
+        // .doubleValue() evita ambiguidade entre assertEquals(double, double)
+        // e assertEquals(Object, Object) ao comparar um Double.
+        assertEquals(0.0, exato.calcularGapPercentual(0).doubleValue(), 1e-9,
+                "solucao otima deve ter GAP zero mesmo com otimo zero");
+    }
+
+    @Test
+    void desequilibrioRelativoDeveSerProporcionalASomaTotal() {
+        // somaA = 30, somaB = 10 -> diferenca 20 sobre total 40 = 50%
+        PartitionResult resultado = new PartitionResult(
+                "teste", new boolean[]{true, false}, 30, 10, new br.edu.taal.particao.model.Metrics());
+
+        assertEquals(40, resultado.getSomaTotal());
+        assertEquals(50.0, resultado.getDesequilibrioRelativo(), 1e-9);
+    }
+
+    @Test
+    void algoritmosExatosDevemTerSempreODesequilibrioMinimo() {
+        Random random = new Random(99);
+        PartitionAlgorithm referencia = new DynamicProgrammingPartition();
+
+        for (int repeticao = 0; repeticao < 20; repeticao++) {
+            int n = 5 + random.nextInt(11);
+            int[] valores = new int[n];
+            for (int i = 0; i < n; i++) {
+                valores[i] = 1 + random.nextInt(300);
+            }
+            Instance instancia = new Instance("desequilibrio_" + repeticao, valores);
+
+            double desequilibrioOtimo = referencia.solve(instancia).getDesequilibrioRelativo();
+            for (PartitionAlgorithm algoritmo : todosAlgoritmos()) {
+                double desequilibrio = algoritmo.solve(instancia).getDesequilibrioRelativo();
+                assertTrue(desequilibrio >= desequilibrioOtimo - 1e-9,
+                        algoritmo.getNome() + " apresentou desequilibrio abaixo do otimo");
+            }
+        }
     }
 
     @Test

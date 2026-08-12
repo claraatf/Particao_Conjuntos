@@ -17,8 +17,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Ponto de entrada da bateria de experimentos.
@@ -144,13 +149,24 @@ public class Main {
         for (ExecutionRecord registro : registros) {
             if (registro.isSucesso()) {
                 Double gap = registro.getGapPercentual();
+                Long gapAbsoluto = registro.getGapAbsoluto();
+                // Quando o otimo e zero o GAP relativo e indefinido; nesse caso
+                // exibe-se o GAP absoluto, que continua informativo.
+                String qualidade;
+                if (gap != null) {
+                    qualidade = String.format(Locale.US, "gap=%.2f%%", gap);
+                } else if (gapAbsoluto != null) {
+                    qualidade = String.format(Locale.US, "gap=+%d (abs)", gapAbsoluto);
+                } else {
+                    qualidade = "gap=-";
+                }
                 System.out.printf(Locale.US,
-                        "   %-22s diferenca=%-12d tempo=%9.3f ms  estados=%-12d gap=%s%n",
+                        "   %-22s diferenca=%-12d tempo=%9.3f ms  estados=%-12d %s%n",
                         registro.getNomeAlgoritmo(),
                         registro.getResultado().getDiferenca(),
                         registro.getResultado().getMetricas().getTempoExecucaoMillis(),
                         registro.getResultado().getMetricas().getEstadosExplorados(),
-                        gap == null ? "-" : String.format(Locale.US, "%.2f%%", gap));
+                        qualidade);
             } else {
                 System.out.printf("   %-22s %s (%s)%n",
                         registro.getNomeAlgoritmo(), registro.getStatus(), registro.getObservacao());
@@ -158,36 +174,113 @@ public class Main {
         }
     }
 
+    /**
+     * Imprime dois blocos distintos. O primeiro cobre todas as execucoes de
+     * cada algoritmo. O segundo restringe-se as instancias em que existe otimo
+     * comprovado (ou seja, em que algum algoritmo exato concluiu), unico
+     * recorte em que as medidas de qualidade sao comparaveis entre linhas:
+     * como os algoritmos exponenciais nao rodam nas instancias grandes,
+     * comparar medias calculadas sobre conjuntos diferentes de instancias
+     * levaria a conclusoes invertidas.
+     */
     private static void imprimirResumo(List<ExecutionRecord> registros) {
-        System.out.println();
-        System.out.println("=== Resumo por algoritmo ===");
-        System.out.printf("%-22s %10s %10s %12s %14s%n",
-                "Algoritmo", "Execucoes", "Sucessos", "% Otimos", "Tempo medio(ms)");
-
         List<String> algoritmos = registros.stream()
                 .map(ExecutionRecord::getNomeAlgoritmo)
                 .distinct()
                 .toList();
 
+        System.out.println();
+        System.out.println("=== Resumo geral (todas as instancias submetidas a cada algoritmo) ===");
+        System.out.printf("%-22s %10s %10s %14s%n",
+                "Algoritmo", "Execucoes", "Sucessos", "Tempo medio(ms)");
+
         for (String algoritmo : algoritmos) {
-            List<ExecutionRecord> doAlgoritmo = registros.stream()
-                    .filter(r -> r.getNomeAlgoritmo().equals(algoritmo))
-                    .toList();
+            List<ExecutionRecord> doAlgoritmo = filtrarPorAlgoritmo(registros, algoritmo);
             long sucessos = doAlgoritmo.stream().filter(ExecutionRecord::isSucesso).count();
-            long comReferencia = doAlgoritmo.stream()
-                    .filter(r -> r.atingiuOtimo() != null).count();
-            long otimos = doAlgoritmo.stream()
-                    .filter(r -> Boolean.TRUE.equals(r.atingiuOtimo())).count();
             double tempoMedio = doAlgoritmo.stream()
                     .filter(ExecutionRecord::isSucesso)
                     .mapToDouble(r -> r.getResultado().getMetricas().getTempoExecucaoMillis())
                     .average().orElse(Double.NaN);
 
-            System.out.printf(Locale.US, "%-22s %10d %10d %11s %14.3f%n",
-                    algoritmo, doAlgoritmo.size(), sucessos,
-                    comReferencia == 0 ? "-" : String.format(Locale.US, "%.1f%%",
-                            100.0 * otimos / comReferencia),
-                    tempoMedio);
+            System.out.printf(Locale.US, "%-22s %10d %10d %14.3f%n",
+                    algoritmo, doAlgoritmo.size(), sucessos, tempoMedio);
         }
+
+        Set<String> baseComum = instanciasComunsATodos(registros, algoritmos);
+
+        System.out.println();
+        System.out.println("=== Qualidade da solucao (base comum a todos os algoritmos) ===");
+        System.out.println("Base comparavel: " + baseComum.size()
+                + " instancias com otimo comprovado em que os cinco algoritmos concluiram.");
+        System.out.printf("%-22s %10s %12s %16s%n",
+                "Algoritmo", "Execucoes", "% Otimos", "Desequilibrio%");
+
+        for (String algoritmo : algoritmos) {
+            List<ExecutionRecord> comparaveis = filtrarPorAlgoritmo(registros, algoritmo).stream()
+                    .filter(ExecutionRecord::isSucesso)
+                    .filter(r -> baseComum.contains(r.getNomeInstancia()))
+                    .toList();
+
+            if (comparaveis.isEmpty()) {
+                System.out.printf("%-22s %10d %12s %16s%n", algoritmo, 0, "-", "-");
+                continue;
+            }
+
+            long otimos = comparaveis.stream()
+                    .filter(r -> Boolean.TRUE.equals(r.atingiuOtimo())).count();
+            double desequilibrioMedio = comparaveis.stream()
+                    .mapToDouble(r -> r.getResultado().getDesequilibrioRelativo())
+                    .average().orElse(Double.NaN);
+
+            System.out.printf(Locale.US, "%-22s %10d %11.1f%% %15.6f%n",
+                    algoritmo, comparaveis.size(),
+                    100.0 * otimos / comparaveis.size(), desequilibrioMedio);
+        }
+
+        System.out.println();
+        System.out.println("Nota: as instancias maiores ficam fora da base comum, pois os algoritmos");
+        System.out.println("exponenciais nao sao executados nelas. O CSV traz todas as execucoes,");
+        System.out.println("com referencia_comprovada indicando se o otimo e garantido.");
+    }
+
+    /**
+     * Instancias em que <em>todos</em> os algoritmos concluiram com sucesso e
+     * existe otimo comprovado. Medias de qualidade calculadas sobre bases
+     * diferentes nao sao comparaveis entre si: como os algoritmos exponenciais
+     * so rodam nas instancias pequenas, compara-los com heuristicas que tambem
+     * rodaram nas grandes pode sugerir, incorretamente, que uma heuristica
+     * supera um algoritmo exato.
+     */
+    private static Set<String> instanciasComunsATodos(List<ExecutionRecord> registros,
+                                                      List<String> algoritmos) {
+        Map<String, Set<String>> algoritmosPorInstancia = new LinkedHashMap<>();
+        Set<String> comOtimoComprovado = new HashSet<>();
+
+        for (ExecutionRecord registro : registros) {
+            if (!registro.isSucesso()) {
+                continue;
+            }
+            algoritmosPorInstancia
+                    .computeIfAbsent(registro.getNomeInstancia(), chave -> new HashSet<>())
+                    .add(registro.getNomeAlgoritmo());
+            if (registro.isReferenciaComprovada()) {
+                comOtimoComprovado.add(registro.getNomeInstancia());
+            }
+        }
+
+        Set<String> base = new LinkedHashSet<>();
+        for (Map.Entry<String, Set<String>> entrada : algoritmosPorInstancia.entrySet()) {
+            if (entrada.getValue().size() == algoritmos.size()
+                    && comOtimoComprovado.contains(entrada.getKey())) {
+                base.add(entrada.getKey());
+            }
+        }
+        return base;
+    }
+
+    private static List<ExecutionRecord> filtrarPorAlgoritmo(List<ExecutionRecord> registros, String algoritmo) {
+        return registros.stream()
+                .filter(r -> r.getNomeAlgoritmo().equals(algoritmo))
+                .toList();
     }
 }

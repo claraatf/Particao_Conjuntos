@@ -73,6 +73,10 @@ Onde `S` é a soma total dos elementos.
 O projeto precisa do **JDK 17 ou superior**. Não é necessário instalar Maven (veja a
 [Opção C](#opção-c--linha-de-comando-sem-maven-mais-simples)).
 
+Versões mais novas do JDK também funcionam — o projeto foi executado com sucesso nas versões 17 e
+26. Em JDKs recentes, o IntelliJ emite alguns avisos `WARNING: A restricted method ... has been
+called`, que vêm do agente da própria IDE e não do código do projeto.
+
 ### Como verificar se você já tem o JDK
 
 Abra um terminal (PowerShell, Prompt de Comando ou Terminal do Linux/macOS) e execute:
@@ -370,14 +374,27 @@ Instancia uniforme_pequeno_n10_v0          (n=   10, soma=490)
 Bateria concluida em 7.0 segundos (210 execucoes).
 Resultados gravados em: ...\TAAL\resultados\resultados_rapido.csv
 
-=== Resumo por algoritmo ===
-Algoritmo               Execucoes   Sucessos     % Otimos Tempo medio(ms)
-Backtracking                   30         30      100.0%          0.822
-BranchAndBound                 30         30      100.0%          0.119
-ProgramacaoDinamica            50         36      100.0%         45.187
-Guloso                         50         50       52.0%          0.151
-KarmarkarKarp                  50         50       74.0%          0.141
+=== Resumo geral (todas as instancias submetidas a cada algoritmo) ===
+Algoritmo               Execucoes   Sucessos Tempo medio(ms)
+Backtracking                   30         30          1.438
+BranchAndBound                 30         30          0.112
+ProgramacaoDinamica            50         36         60.585
+Guloso                         50         50          0.171
+KarmarkarKarp                  50         50          0.175
+
+=== Qualidade da solucao (base comum a todos os algoritmos) ===
+Base comparavel: 24 instancias com otimo comprovado em que os cinco algoritmos concluiram.
+Algoritmo               Execucoes     % Otimos   Desequilibrio%
+Backtracking                   24       100.0%        3.253944
+BranchAndBound                 24       100.0%        3.253944
+ProgramacaoDinamica            24       100.0%        3.253944
+Guloso                         24        58.3%        3.539037
+KarmarkarKarp                  24        70.8%        3.365815
 ```
+
+Um bom indício de que tudo está correto: os três algoritmos exatos exibem **exatamente o mesmo**
+desequilíbrio médio, como deve acontecer se todos realmente encontram o ótimo. As heurísticas ficam
+acima, nunca abaixo.
 
 Duas observações importantes sobre essa saída, porque **não são erros**:
 
@@ -432,6 +449,7 @@ mvn test
 | `OutOfMemoryError: Java heap space` | Pouca memória para a JVM | Rode com `-Xmx4g`. Se a máquina tiver pouca RAM, use `--rapido` |
 | O programa parece travado | Bateria completa em andamento | É normal levar de 1 a 5 minutos. Use `--rapido` para verificar rapidamente |
 | `MEMORIA_INVIAVEL` na saída | **Não é erro** | É um resultado esperado do experimento, veja [esta observação](#o-que-você-deve-ver-ao-executar) |
+| `WARNING: A restricted method in java.lang.System has been called` | **Não é erro** | Aviso emitido pelo agente do próprio IntelliJ (`idea_rt.jar`) em JDKs recentes. Não vem do código do projeto e não afeta os resultados |
 
 Se nenhuma das opções acima resolver, o caminho mais confiável é o manual, que depende apenas do
 JDK — execute a partir da pasta do projeto:
@@ -456,12 +474,46 @@ Para cada execução (`Metrics` e `ExecutionRecord`):
 - número de chamadas recursivas;
 - número de podas realizadas;
 - profundidade máxima da árvore de busca;
-- diferença encontrada, diferença ótima de referência, GAP percentual e se atingiu o ótimo;
+- diferença encontrada e diferença ótima de referência;
+- três medidas de qualidade, detalhadas abaixo;
 - status: `SUCESSO`, `TEMPO_LIMITE`, `MEMORIA_INVIAVEL` ou `ERRO`.
 
 O *warm-up* existe porque a JVM compila o código sob demanda (JIT): as primeiras execuções de um
 método são interpretadas e, portanto, muito mais lentas. Medir sem aquecer produziria tempos que
 refletem o compilador, e não o algoritmo.
+
+### Por que três medidas de qualidade
+
+O GAP percentual sozinho é uma métrica instável neste problema, por duas razões:
+
+1. **É indefinido quando o ótimo vale zero.** Como a partição perfeita é justamente o melhor
+   resultado possível, instâncias com ótimo zero são frequentes — e nelas `(x − 0) / 0` não existe.
+   Preencher esse caso com um valor fixo (por exemplo, 100%) faria uma solução de diferença 18 e
+   outra de diferença 16 aparecerem como igualmente ruins.
+2. **Explode quando o ótimo é pequeno.** Com ótimo 20 e solução 29.540, o GAP relativo é de
+   147.600%, um número que diz pouco sobre a qualidade prática da partição.
+
+Por isso o projeto registra três medidas complementares:
+
+| Coluna | Definição | Quando usar |
+|--------|-----------|-------------|
+| `gap_absoluto` | `diferença − ótimo` | sempre definido; bom para instâncias com ótimo baixo |
+| `gap_percentual` | `100·(diferença − ótimo)/ótimo` | comparação relativa; **vazio** quando o ótimo é zero |
+| `desequilibrio_relativo_pct` | `100·diferença/somaTotal` | sempre definido e comparável entre instâncias de escalas diferentes |
+
+### Ótimo comprovado versus melhor solução conhecida
+
+Nas instâncias grandes nenhum algoritmo exato conclui, de modo que a referência passa a ser a melhor
+solução encontrada pelas heurísticas. Nesses casos, "atingiu o ótimo" significaria apenas "igualou a
+melhor heurística", o que inflaria artificialmente a taxa de acerto. A coluna
+`referencia_comprovada` distingue os dois casos, e a coluna `atingiu_otimo` fica vazia quando não há
+ótimo comprovado.
+
+Pelo mesmo motivo, o resumo impresso ao final separa dois blocos: o desempenho é reportado sobre
+todas as execuções, mas a **qualidade** é reportada apenas sobre a base de instâncias em que os
+cinco algoritmos concluíram. Médias calculadas sobre conjuntos diferentes de instâncias não são
+comparáveis entre si — como os algoritmos exponenciais só rodam nas instâncias pequenas, uma
+comparação ingênua chega a sugerir que uma heurística supera um algoritmo exato, o que é impossível.
 
 ## Instâncias de teste
 
@@ -524,9 +576,13 @@ O arquivo gerado tem uma linha por (instância × algoritmo), com as colunas:
 
 ```
 perfil, tamanho, instancia, algoritmo, exato, status, soma_a, soma_b, diferenca,
-diferenca_referencia, gap_percentual, atingiu_otimo, tempo_ms, memoria_mb,
+diferenca_referencia, referencia_comprovada, gap_absoluto, gap_percentual,
+desequilibrio_relativo_pct, atingiu_otimo, tempo_ms, memoria_mb,
 estados_explorados, chamadas_recursivas, podas, profundidade_maxima, observacao
 ```
+
+Para uma análise de qualidade estatisticamente válida, filtre por
+`referencia_comprovada = true` — caso contrário estará comparando heurísticas com elas mesmas.
 
 O separador decimal é o **ponto** e o separador de colunas é a **vírgula**. Ao abrir no Excel em
 português, use **Dados > Obter Dados > De Texto/CSV** e selecione origem **UTF-8** para que os
