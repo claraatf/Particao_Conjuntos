@@ -12,6 +12,10 @@ package br.edu.taal.particao.model;
 public class Metrics {
 
     private long tempoExecucaoNanos;
+    private long tempoMinimoNanos;
+    private long tempoMaximoNanos;
+    private double desvioPadraoTempoNanos;
+    private int repeticoesMedidas;
     /** Bytes alocados no heap pela thread durante a execucao; -1 quando indisponivel. */
     private long memoriaAlocadaBytes = -1L;
 
@@ -40,6 +44,20 @@ public class Metrics {
 
     public void setTempoExecucaoNanos(long tempoExecucaoNanos) {
         this.tempoExecucaoNanos = tempoExecucaoNanos;
+        this.tempoMinimoNanos = tempoExecucaoNanos;
+        this.tempoMaximoNanos = tempoExecucaoNanos;
+        this.desvioPadraoTempoNanos = 0.0;
+        this.repeticoesMedidas = 1;
+    }
+
+    /** Registra o resumo estatistico das repeticoes medidas pelo executor. */
+    public void setResumoTempos(long medianaNanos, long minimoNanos, long maximoNanos,
+                                double desvioPadraoNanos, int repeticoesMedidas) {
+        this.tempoExecucaoNanos = medianaNanos;
+        this.tempoMinimoNanos = minimoNanos;
+        this.tempoMaximoNanos = maximoNanos;
+        this.desvioPadraoTempoNanos = desvioPadraoNanos;
+        this.repeticoesMedidas = repeticoesMedidas;
     }
 
     public void setMemoriaAlocadaBytes(long memoriaAlocadaBytes) {
@@ -52,6 +70,22 @@ public class Metrics {
 
     public double getTempoExecucaoMillis() {
         return tempoExecucaoNanos / 1_000_000.0;
+    }
+
+    public double getTempoMinimoMillis() {
+        return tempoMinimoNanos / 1_000_000.0;
+    }
+
+    public double getTempoMaximoMillis() {
+        return tempoMaximoNanos / 1_000_000.0;
+    }
+
+    public double getDesvioPadraoTempoMillis() {
+        return desvioPadraoTempoNanos / 1_000_000.0;
+    }
+
+    public int getRepeticoesMedidas() {
+        return repeticoesMedidas;
     }
 
     public long getMemoriaAlocadaBytes() {

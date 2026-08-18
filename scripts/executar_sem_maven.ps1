@@ -4,16 +4,23 @@
 # Uso:
 #   .\scripts\executar_sem_maven.ps1              # bateria completa
 #   .\scripts\executar_sem_maven.ps1 -Rapido      # bateria reduzida (~10 segundos)
+#   .\scripts\executar_sem_maven.ps1 -Escalabilidade # limites empiricos
 #   .\scripts\executar_sem_maven.ps1 -Seed 7 -Xmx 4g
 
 param(
     [switch]$Rapido,
+    [switch]$Escalabilidade,
     [long]$Seed = 42,
     [string]$Xmx = "4g",
     [string]$Saida = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($Rapido -and $Escalabilidade) {
+    Write-Host "ERRO: use apenas -Rapido ou -Escalabilidade." -ForegroundColor Red
+    exit 1
+}
 
 $raiz = Split-Path -Parent $PSScriptRoot
 Set-Location $raiz
@@ -59,6 +66,7 @@ Write-Host "Compilacao concluida."
 $argumentos = @([string]$Seed)
 if ($Saida -ne "") { $argumentos += $Saida }
 if ($Rapido) { $argumentos += "--rapido" }
+if ($Escalabilidade) { $argumentos += "--escalabilidade" }
 
 Write-Host ""
 Write-Host "Executando os experimentos..."

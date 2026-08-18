@@ -6,7 +6,10 @@ import br.edu.taal.particao.algorithms.DynamicProgrammingPartition;
 import br.edu.taal.particao.algorithms.GreedyPartition;
 import br.edu.taal.particao.algorithms.KarmarkarKarpPartition;
 import br.edu.taal.particao.algorithms.PartitionAlgorithm;
+import br.edu.taal.particao.experiment.ExecutionRecord;
+import br.edu.taal.particao.experiment.ExperimentRunner;
 import br.edu.taal.particao.experiment.InstanceGenerator;
+import br.edu.taal.particao.experiment.ScalabilityPolicy;
 import br.edu.taal.particao.model.Instance;
 import br.edu.taal.particao.model.PartitionResult;
 import org.junit.jupiter.api.Test;
@@ -221,5 +224,56 @@ class PartitionAlgorithmsTest {
                         "Medicao indisponivel deve ser representada por -1");
             }
         }
+    }
+
+    @Test
+    void executorDeveRegistrarResumoEstatisticoDasRepeticoes() {
+        Instance instancia = new Instance("estatisticas", new int[]{31, 29, 23, 19, 17, 13, 11, 7});
+        ExperimentRunner runner = new ExperimentRunner(5, 1, 7);
+
+        ExecutionRecord registro = runner.executar(new GreedyPartition(), instancia, "TESTE");
+
+        assertTrue(registro.isSucesso(), "A execucao de teste deveria concluir");
+        br.edu.taal.particao.model.Metrics metricas = registro.getResultado().getMetricas();
+        assertEquals(7, metricas.getRepeticoesMedidas());
+        assertTrue(metricas.getTempoMinimoMillis() <= metricas.getTempoExecucaoMillis());
+        assertTrue(metricas.getTempoExecucaoMillis() <= metricas.getTempoMaximoMillis());
+        assertTrue(metricas.getDesvioPadraoTempoMillis() >= 0.0);
+    }
+
+    @Test
+    void perfilSomaImparDeveImpedirParticaoPerfeita() {
+        InstanceGenerator gerador = new InstanceGenerator(42L);
+
+        for (int tamanho : new int[]{1, 10, 15, 50}) {
+            for (int variacao = 0; variacao < 5; variacao++) {
+                Instance instancia = gerador.gerar(
+                        InstanceGenerator.Perfil.SOMA_IMPAR, tamanho, variacao);
+                assertEquals(tamanho, instancia.getTamanho());
+                assertEquals(1, instancia.getSomaTotal() % 2,
+                        "Soma impar e necessaria para impedir diferenca zero");
+            }
+        }
+    }
+
+    @Test
+    void politicaDeEscalabilidadeDeveBloquearAposDuasInviabilidades() {
+        ScalabilityPolicy politica = new ScalabilityPolicy(2);
+        PartitionAlgorithm algoritmo = new BacktrackingPartition();
+        Instance instancia = new Instance("limite", new int[]{9, 7, 5, 3, 1});
+
+        ExecutionRecord primeira = ExecutionRecord.falha(
+                instancia, "SOMA_IMPAR", algoritmo.getNome(), algoritmo.isExato(),
+                ExecutionRecord.Status.TEMPO_LIMITE, "primeiro timeout");
+        politica.registrar(primeira);
+        assertNull(politica.getMotivoBloqueio("SOMA_IMPAR", algoritmo));
+
+        ExecutionRecord segunda = ExecutionRecord.falha(
+                instancia, "SOMA_IMPAR", algoritmo.getNome(), algoritmo.isExato(),
+                ExecutionRecord.Status.TEMPO_LIMITE, "segundo timeout");
+        politica.registrar(segunda);
+
+        String motivo = politica.getMotivoBloqueio("SOMA_IMPAR", algoritmo);
+        assertTrue(motivo != null && motivo.contains("2 inviabilidades consecutivas"));
     }
 }

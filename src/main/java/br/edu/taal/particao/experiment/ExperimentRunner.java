@@ -31,6 +31,15 @@ public class ExperimentRunner {
     private final int repeticoesMedicao;
 
     public ExperimentRunner(long tempoLimiteSegundos, int repeticoesAquecimento, int repeticoesMedicao) {
+        if (tempoLimiteSegundos <= 0) {
+            throw new IllegalArgumentException("O tempo limite deve ser positivo.");
+        }
+        if (repeticoesAquecimento < 0) {
+            throw new IllegalArgumentException("O numero de aquecimentos nao pode ser negativo.");
+        }
+        if (repeticoesMedicao <= 0) {
+            throw new IllegalArgumentException("Deve existir ao menos uma repeticao de medicao.");
+        }
         this.tempoLimiteSegundos = tempoLimiteSegundos;
         this.repeticoesAquecimento = repeticoesAquecimento;
         this.repeticoesMedicao = repeticoesMedicao;
@@ -66,8 +75,14 @@ public class ExperimentRunner {
                     melhorMedicao = atual;
                 }
                 if (melhorMedicao != null && !tempos.isEmpty()) {
+                    double desvioPadrao = calcularDesvioPadraoAmostral(tempos);
                     tempos.sort(Long::compareTo);
-                    melhorMedicao.getMetricas().setTempoExecucaoNanos(tempos.get(tempos.size() / 2));
+                    melhorMedicao.getMetricas().setResumoTempos(
+                            tempos.get(tempos.size() / 2),
+                            tempos.get(0),
+                            tempos.get(tempos.size() - 1),
+                            desvioPadrao,
+                            tempos.size());
                     if (!memoriasAlocadas.isEmpty()) {
                         memoriasAlocadas.sort(Long::compareTo);
                         melhorMedicao.getMetricas().setMemoriaAlocadaBytes(
@@ -106,6 +121,20 @@ public class ExperimentRunner {
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    private double calcularDesvioPadraoAmostral(List<Long> valores) {
+        if (valores.size() <= 1) {
+            return 0.0;
+        }
+
+        double media = valores.stream().mapToDouble(Long::doubleValue).average().orElse(0.0);
+        double somaQuadrados = 0.0;
+        for (long valor : valores) {
+            double diferenca = valor - media;
+            somaQuadrados += diferenca * diferenca;
+        }
+        return Math.sqrt(somaQuadrados / (valores.size() - 1));
     }
 
     /**

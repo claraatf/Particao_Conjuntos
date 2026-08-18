@@ -5,6 +5,7 @@
 # Uso:
 #   ./scripts/executar_sem_maven.sh                 # bateria completa
 #   ./scripts/executar_sem_maven.sh --rapido        # bateria reduzida (~10 segundos)
+#   ./scripts/executar_sem_maven.sh --escalabilidade # limites empiricos
 #   ./scripts/executar_sem_maven.sh --rapido 7      # com seed 7
 
 set -euo pipefail

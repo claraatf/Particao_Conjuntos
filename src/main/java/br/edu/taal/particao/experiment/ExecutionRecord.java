@@ -16,6 +16,7 @@ public class ExecutionRecord {
         SUCESSO,
         TEMPO_LIMITE,
         MEMORIA_INVIAVEL,
+        NAO_EXECUTADO,
         ERRO
     }
 

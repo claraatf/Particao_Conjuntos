@@ -29,7 +29,9 @@ public class InstanceGenerator {
         /** Particao perfeita garantida por construcao: util para medir corretude. */
         PARTICAO_PERFEITA,
         /** Um valor dominante e varios pequenos: caso classico de falha do guloso. */
-        DOMINANTE
+        DOMINANTE,
+        /** Soma total impar: impede particao perfeita e evita parada antecipada em diferenca zero. */
+        SOMA_IMPAR
     }
 
     private final long seed;
@@ -63,6 +65,8 @@ public class InstanceGenerator {
                 return new Instance(nome, particaoPerfeita(random, tamanho));
             case DOMINANTE:
                 return new Instance(nome, comValorDominante(random, tamanho));
+            case SOMA_IMPAR:
+                return new Instance(nome, comSomaImpar(random, tamanho));
             default:
                 throw new IllegalArgumentException("Perfil nao suportado: " + perfil);
         }
@@ -72,6 +76,21 @@ public class InstanceGenerator {
         int[] valores = new int[tamanho];
         for (int i = 0; i < tamanho; i++) {
             valores[i] = minimo + random.nextInt(maximo - minimo + 1);
+        }
+        return valores;
+    }
+
+    /** Gera valores pequenos e garante soma impar para todo tamanho positivo. */
+    private int[] comSomaImpar(Random random, int tamanho) {
+        int[] valores = valoresAleatorios(random, tamanho, 1, 100);
+        if (tamanho > 0) {
+            long soma = 0;
+            for (int valor : valores) {
+                soma += valor;
+            }
+            if (soma % 2 == 0) {
+                valores[tamanho - 1]++;
+            }
         }
         return valores;
     }

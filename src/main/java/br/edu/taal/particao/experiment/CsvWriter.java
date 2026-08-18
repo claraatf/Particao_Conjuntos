@@ -35,6 +35,10 @@ public class CsvWriter {
             "desequilibrio_relativo_pct",
             "atingiu_otimo",
             "tempo_ms",
+            "tempo_min_ms",
+            "tempo_max_ms",
+            "tempo_desvio_padrao_ms",
+            "repeticoes_medicao",
             "memoria_alocada_mb",
             "estados_explorados",
             "chamadas_recursivas",
@@ -80,6 +84,10 @@ public class CsvWriter {
             linha.append(String.format(Locale.US, "%.6f", resultado.getDesequilibrioRelativo())).append(',');
             linha.append(valorOuVazio(registro.atingiuOtimo())).append(',');
             linha.append(String.format(Locale.US, "%.4f", metricas.getTempoExecucaoMillis())).append(',');
+            linha.append(String.format(Locale.US, "%.4f", metricas.getTempoMinimoMillis())).append(',');
+            linha.append(String.format(Locale.US, "%.4f", metricas.getTempoMaximoMillis())).append(',');
+            linha.append(String.format(Locale.US, "%.4f", metricas.getDesvioPadraoTempoMillis())).append(',');
+            linha.append(metricas.getRepeticoesMedidas()).append(',');
             if (metricas.isMemoriaAlocadaDisponivel()) {
                 linha.append(String.format(Locale.US, "%.4f", metricas.getMemoriaAlocadaMB()));
             }
@@ -89,8 +97,8 @@ public class CsvWriter {
             linha.append(metricas.getPodasRealizadas()).append(',');
             linha.append(metricas.getProfundidadeMaxima()).append(',');
         } else {
-            // 15 colunas de metricas ficam vazias quando a execucao nao concluiu.
-            linha.append(",".repeat(15));
+            // 19 colunas de resultado e metricas ficam vazias quando a execucao nao concluiu.
+            linha.append(",".repeat(19));
         }
 
         linha.append(escapar(registro.getObservacao()));

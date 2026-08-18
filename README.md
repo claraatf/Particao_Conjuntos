@@ -121,14 +121,16 @@ brew install --cask temurin@17
 
 Escolha **uma** das quatro opções abaixo. Todas produzem o mesmo resultado.
 
-O programa tem dois modos:
+O programa tem três modos:
 
 | Modo | Como acionar | Duração | Para que serve |
 |------|--------------|---------|----------------|
 | **Rápido** | argumento `--rapido` | ~10 segundos | confirmar que o ambiente funciona |
 | **Completo** | sem argumentos | 1 a 5 minutos | gerar os dados do relatório |
+| **Escalabilidade** | argumento `--escalabilidade` | variável | localizar limites práticos com timeout adaptativo |
 
-> **Sugestão:** rode primeiro no modo rápido. Se ele funcionar, o completo também funcionará.
+> **Sugestão:** rode primeiro no modo rápido. Depois use o completo para os dados comparativos e o
+> de escalabilidade para observar quando cada estratégia deixa de ser viável.
 
 ---
 
@@ -174,6 +176,7 @@ Existem duas formas. A primeira é a mais direta:
 3. Clique no botão verde ▶ (ou pressione `F5`).
 4. A saída aparece na aba **DEBUG CONSOLE**, na parte inferior da tela.
 5. Para a bateria completa, repita escolhendo **"2. Bateria COMPLETA (1 a 5 minutos)"**.
+6. Para localizar os limites práticos, escolha **"3. ESCALABILIDADE (limites empiricos)"**.
 
 *Forma 2 — pelo botão Run acima do método `main`*
 
@@ -239,6 +242,9 @@ Isso executa a **bateria completa**. Para rodar a bateria rápida:
    *(Se o campo VM options não estiver visível, clique em **Modify options > Add VM options**.)*
 5. Clique em **OK** e execute novamente com ▶.
 
+Para o modo de escalabilidade, use `--escalabilidade` no campo **Program arguments** no lugar de
+`--rapido`.
+
 ---
 
 ### Opção C — Linha de comando sem Maven (mais simples)
@@ -266,6 +272,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\executar_sem_maven.ps1 -Rapid
 powershell -ExecutionPolicy Bypass -File .\scripts\executar_sem_maven.ps1
 ```
 
+5. Para procurar os limites empíricos dos algoritmos:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\executar_sem_maven.ps1 -Escalabilidade
+```
+
 > O trecho `-ExecutionPolicy Bypass` evita o erro *"a execução de scripts foi desabilitada neste
 > sistema"*, comum em instalações padrão do Windows.
 
@@ -277,6 +289,10 @@ bash scripts/executar_sem_maven.sh --rapido
 
 ```bash
 bash scripts/executar_sem_maven.sh
+```
+
+```bash
+bash scripts/executar_sem_maven.sh --escalabilidade
 ```
 
 O script verifica se o JDK está instalado, compila todas as classes-fonte em `build/classes` e executa o
@@ -324,6 +340,12 @@ Para a bateria completa, omita o `--rapido`:
 java -Xmx4g -jar target/particao-conjuntos-1.0-SNAPSHOT.jar
 ```
 
+Para executar apenas o estudo de escalabilidade:
+
+```bash
+java -Xmx4g -jar target/particao-conjuntos-1.0-SNAPSHOT.jar --escalabilidade
+```
+
 Também existem scripts que fazem as duas etapas de uma vez:
 
 ```bash
@@ -341,8 +363,12 @@ Todos são opcionais e podem ser combinados em qualquer ordem:
 | Argumento | Significado | Padrão |
 |-----------|-------------|--------|
 | `--rapido` | executa a bateria reduzida | ausente (bateria completa) |
+| `--escalabilidade` | executa tamanhos graduais com interrupção adaptativa | ausente |
 | primeiro número | *seed* do gerador de instâncias | `42` |
 | segundo valor | caminho do arquivo CSV de saída | `resultados/resultados.csv` |
+
+`--rapido` e `--escalabilidade` são mutuamente exclusivos. Quando nenhum caminho é informado, o
+modo de escalabilidade grava `resultados/resultados_escalabilidade.csv`.
 
 Exemplo com todos os argumentos:
 
@@ -361,6 +387,8 @@ A execução no modo rápido termina em cerca de 10 segundos com uma saída seme
 === Problema da Particao de Conjuntos - Estudo Comparativo ===
 Modo: RAPIDO (bateria reduzida, cerca de 10 segundos)
 Seed: 42
+Repeticoes por execucao: 1 aquecimento(s) + 3 medicao(oes)
+Tempo limite por combinacao: 30s
 Ambiente: Java 17.0.12 | Windows 11 | processadores disponiveis: 12 | memoria maxima da JVM: 4018 MB
 
 Instancia uniforme_pequeno_n10_v0          (n=   10, soma=490)
@@ -371,20 +399,28 @@ Instancia uniforme_pequeno_n10_v0          (n=   10, soma=490)
    KarmarkarKarp          diferenca=0            tempo=    0.074 ms  estados=9            gap=0.00%
    ...
 
-Bateria concluida em 7.0 segundos (210 execucoes).
+Bateria concluida em 7.8 segundos (250 registros).
 Resultados gravados em: ...\TAAL\resultados\resultados_rapido.csv
 
-=== Resumo geral (todas as instancias submetidas a cada algoritmo) ===
-Algoritmo               Execucoes   Sucessos Tempo medio(ms)
-Backtracking                   30         30          1.438
-BranchAndBound                 30         30          0.112
-ProgramacaoDinamica            50         36         60.585
-Guloso                         50         50          0.171
-KarmarkarKarp                  50         50          0.175
+=== Resumo geral (todas as combinacoes planejadas) ===
+Algoritmo               Registros   Sucessos Tempo medio(ms)
+Backtracking                   50         30          0.870
+BranchAndBound                 50         30          0.131
+ProgramacaoDinamica            50         36         46.982
+Guloso                         50         50          0.132
+KarmarkarKarp                  50         50          0.158
+
+=== Distribuicao dos status ===
+Status                Registros
+SUCESSO                     196
+TEMPO_LIMITE                  0
+MEMORIA_INVIAVEL             14
+NAO_EXECUTADO                40
+ERRO                          0
 
 === Qualidade da solucao (base comum a todos os algoritmos) ===
 Base comparavel: 24 instancias com otimo comprovado em que os cinco algoritmos concluiram.
-Algoritmo               Execucoes     % Otimos   Desequilibrio%
+Algoritmo                Amostras     % Otimos   Desequilibrio%
 Backtracking                   24       100.0%        3.253944
 BranchAndBound                 24       100.0%        3.253944
 ProgramacaoDinamica            24       100.0%        3.253944
@@ -400,10 +436,10 @@ Duas observações importantes sobre essa saída, porque **não são erros**:
 
 - Linhas com **`MEMORIA_INVIAVEL`** na Programação Dinâmica são um **resultado esperado e
   desejado** do experimento: demonstram o limite prático da abordagem pseudo-polinomial. É por isso
-  que a coluna "Sucessos" da Programação Dinâmica é menor que "Execucoes".
-- Os algoritmos exatos aparecem com menos execuções que os heurísticos porque **não** são
-  submetidos a instâncias acima de 26 elementos, onde levariam tempo exponencial sem acrescentar
-  informação nova.
+  que a coluna "Sucessos" da Programação Dinâmica é menor que "Registros".
+- Linhas com **`NAO_EXECUTADO`** também não são erros. Na bateria padrão elas documentam o corte
+  preventivo dos algoritmos exponenciais acima de 26 elementos. No modo de escalabilidade indicam
+  que aquela combinação foi evitada após duas inviabilidades consecutivas já observadas.
 
 Os números exatos de tempo variam conforme a máquina; as proporções entre algoritmos, não.
 
@@ -468,7 +504,7 @@ java -cp build/classes br.edu.taal.particao.Main --rapido
 
 Para cada execução (`Metrics` e `ExecutionRecord`):
 
-- tempo de execução (mediana de repetições, após *warm-up* da JVM);
+- tempo de execução (mediana, mínimo, máximo e desvio-padrão amostral, após *warm-up* da JVM);
 - memória alocada no heap pela thread durante a execução;
 - número de estados explorados;
 - número de chamadas recursivas;
@@ -476,11 +512,16 @@ Para cada execução (`Metrics` e `ExecutionRecord`):
 - profundidade máxima da árvore de busca;
 - diferença encontrada e diferença ótima de referência;
 - três medidas de qualidade, detalhadas abaixo;
-- status: `SUCESSO`, `TEMPO_LIMITE`, `MEMORIA_INVIAVEL` ou `ERRO`.
+- status: `SUCESSO`, `TEMPO_LIMITE`, `MEMORIA_INVIAVEL`, `NAO_EXECUTADO` ou `ERRO`.
 
 O *warm-up* existe porque a JVM compila o código sob demanda (JIT): as primeiras execuções de um
 método são interpretadas e, portanto, muito mais lentas. Medir sem aquecer produziria tempos que
-refletem o compilador, e não o algoritmo.
+refletem o compilador, e não o algoritmo. O modo rápido, destinado apenas a conferir o ambiente,
+usa 1 aquecimento e 3 medições. A bateria completa, usada na análise, emprega 2 aquecimentos e 7
+medições. O modo de escalabilidade usa uma única medição, sem aquecimento por instância, porque seu
+objetivo é testar se uma resolução cabe no limite de 5 segundos; após duas inviabilidades
+consecutivas da mesma combinação algoritmo/perfil, os tamanhos seguintes são registrados como
+`NAO_EXECUTADO`.
 
 ### Por que três medidas de qualidade
 
@@ -509,15 +550,15 @@ melhor heurística", o que inflaria artificialmente a taxa de acerto. A coluna
 `referencia_comprovada` distingue os dois casos, e a coluna `atingiu_otimo` fica vazia quando não há
 ótimo comprovado.
 
-Pelo mesmo motivo, o resumo impresso ao final separa dois blocos: o desempenho é reportado sobre
-todas as execuções, mas a **qualidade** é reportada apenas sobre a base de instâncias em que os
+Pelo mesmo motivo, o resumo impresso ao final separa dois blocos: o desempenho considera apenas
+execuções bem-sucedidas, mas a **qualidade** é reportada apenas sobre a base de instâncias em que os
 cinco algoritmos concluíram. Médias calculadas sobre conjuntos diferentes de instâncias não são
 comparáveis entre si — como os algoritmos exponenciais só rodam nas instâncias pequenas, uma
 comparação ingênua chega a sugerir que uma heurística supera um algoritmo exato, o que é impossível.
 
 ## Instâncias de teste
 
-`InstanceGenerator` produz cinco perfis, todos reprodutíveis a partir de uma *seed*:
+`InstanceGenerator` produz seis perfis, todos reprodutíveis a partir de uma *seed*:
 
 | Perfil | Característica | Por que existe |
 |--------|----------------|----------------|
@@ -526,9 +567,12 @@ comparação ingênua chega a sugerir que uma heurística supera um algoritmo ex
 | `VALORES_ENORMES` | valores em [10⁶, 10⁸] | torna a tabela de PD inviável |
 | `PARTICAO_PERFEITA` | diferença zero garantida por construção | mede corretude |
 | `DOMINANTE` | um valor maior que a soma dos demais | caso clássico de dificuldade para o guloso |
+| `SOMA_IMPAR` | valores pequenos com soma total ímpar | impede diferença zero e expõe o crescimento exponencial |
 
-Cada perfil é combinado com vários tamanhos (10, 15, 20, 22, 24, 26, 100, 1.000 e 10.000 elementos)
-e 5 variações, formando a bateria completa de aproximadamente 1.000 execuções.
+Os cinco perfis originais formam as baterias rápida e completa, preservando os conjuntos gerados
+anteriormente. A completa combina tamanhos 10, 15, 20, 22, 24, 26, 100, 1.000 e 10.000 com cinco
+variações, produzindo 1.125 registros — inclusive os casos `NAO_EXECUTADO`. `SOMA_IMPAR` é usado no
+modo de escalabilidade, que testa tamanhos graduais de 10 até 50 com duas variações.
 
 ## Estrutura do projeto
 
@@ -565,6 +609,7 @@ TAAL/
     │   └── experiment/
     │       ├── InstanceGenerator.java         # geração reprodutível de instâncias
     │       ├── ExperimentRunner.java          # execução com warm-up e tempo limite
+    │       ├── ScalabilityPolicy.java         # interrupção adaptativa por algoritmo/perfil
     │       ├── ExecutionRecord.java           # uma linha da tabela de resultados
     │       └── CsvWriter.java                 # exportação para análise
     └── test/java/br/edu/taal/particao/
@@ -578,7 +623,8 @@ O arquivo gerado tem uma linha por (instância × algoritmo), com as colunas:
 ```
 perfil, tamanho, instancia, algoritmo, exato, status, soma_a, soma_b, diferenca,
 diferenca_referencia, referencia_comprovada, gap_absoluto, gap_percentual,
-desequilibrio_relativo_pct, atingiu_otimo, tempo_ms, memoria_alocada_mb,
+desequilibrio_relativo_pct, atingiu_otimo, tempo_ms, tempo_min_ms, tempo_max_ms,
+tempo_desvio_padrao_ms, repeticoes_medicao, memoria_alocada_mb,
 estados_explorados, chamadas_recursivas, podas, profundidade_maxima, observacao
 ```
 
