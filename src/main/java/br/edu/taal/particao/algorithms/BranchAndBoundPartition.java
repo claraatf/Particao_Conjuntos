@@ -28,7 +28,7 @@ import java.util.Arrays;
  * <p>Complexidade de tempo no pior caso: O(2^n), porem tipicamente muito
  * menor na pratica devido as podas.</p>
  */
-public class BranchAndBoundPartition implements PartitionAlgorithm {
+public class BranchAndBoundPartition extends AbstractPartitionAlgorithm {
 
     private int[] elementos;
     private Integer[] indicesOriginais; // mapeia posicao ordenada -> indice original da instancia
@@ -39,7 +39,7 @@ public class BranchAndBoundPartition implements PartitionAlgorithm {
     private boolean encontrouOtimoAbsoluto;
 
     @Override
-    public PartitionResult solve(Instance instance) {
+    protected PartitionResult solveInternal(Instance instance) {
         int[] originais = instance.getElementos();
         int n = originais.length;
 
@@ -67,18 +67,11 @@ public class BranchAndBoundPartition implements PartitionAlgorithm {
         this.melhorDiferenca = Long.MAX_VALUE;
         this.encontrouOtimoAbsoluto = false;
 
-        long inicio = System.nanoTime();
-        long memAntes = medirMemoriaUsada();
-
         boolean[] grupoAtual = new boolean[n];
         if (n > 0) {
             grupoAtual[0] = true; // quebra de simetria
             branchAndBound(1, elementos[0], 0, grupoAtual);
         }
-
-        long memDepois = medirMemoriaUsada();
-        metricas.setTempoExecucaoNanos(System.nanoTime() - inicio);
-        metricas.setMemoriaUsadaBytes(Math.max(0, memDepois - memAntes));
 
         boolean[] grupoOriginal = new boolean[n];
         long somaA = 0;
@@ -139,11 +132,6 @@ public class BranchAndBoundPartition implements PartitionAlgorithm {
 
         grupoAtual[indice] = false;
         branchAndBound(indice + 1, somaA, somaB + valor, grupoAtual);
-    }
-
-    private long medirMemoriaUsada() {
-        Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory() - runtime.freeMemory();
     }
 
     @Override

@@ -22,7 +22,7 @@ import br.edu.taal.particao.model.PartitionResult;
  * elementos &mdash; comportamento que o experimento registra explicitamente
  * atraves de {@link TabelaInviavelException}.</p>
  */
-public class DynamicProgrammingPartition implements PartitionAlgorithm {
+public class DynamicProgrammingPartition extends AbstractPartitionAlgorithm {
 
     private final long limiteCelulas;
 
@@ -39,7 +39,7 @@ public class DynamicProgrammingPartition implements PartitionAlgorithm {
     }
 
     @Override
-    public PartitionResult solve(Instance instance) {
+    protected PartitionResult solveInternal(Instance instance) {
         int[] elementos = instance.getElementos();
         int n = elementos.length;
         long somaTotal = instance.getSomaTotal();
@@ -62,9 +62,6 @@ public class DynamicProgrammingPartition implements PartitionAlgorithm {
         }
 
         Metrics metricas = new Metrics();
-        long inicio = System.nanoTime();
-        long memAntes = medirMemoriaUsada();
-
         boolean[][] alcancavel = new boolean[n + 1][meta + 1];
         alcancavel[0][0] = true;
 
@@ -100,19 +97,11 @@ public class DynamicProgrammingPartition implements PartitionAlgorithm {
             }
         }
 
-        long memDepois = medirMemoriaUsada();
-        metricas.setTempoExecucaoNanos(System.nanoTime() - inicio);
-        metricas.setMemoriaUsadaBytes(Math.max(0, memDepois - memAntes));
         metricas.registrarProfundidade(n);
 
         long somaA = melhorSoma;
         long somaB = somaTotal - melhorSoma;
         return new PartitionResult(getNome(), grupo, somaA, somaB, metricas);
-    }
-
-    private long medirMemoriaUsada() {
-        Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory() - runtime.freeMemory();
     }
 
     @Override

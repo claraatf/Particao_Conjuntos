@@ -30,17 +30,14 @@ import java.util.PriorityQueue;
  * <p>Na pratica costuma produzir solucoes muito melhores que a estrategia
  * gulosa simples, embora tambem nao garanta otimalidade.</p>
  */
-public class KarmarkarKarpPartition implements PartitionAlgorithm {
+public class KarmarkarKarpPartition extends AbstractPartitionAlgorithm {
 
     @Override
-    public PartitionResult solve(Instance instance) {
+    protected PartitionResult solveInternal(Instance instance) {
         int[] elementos = instance.getElementos();
         int n = elementos.length;
 
         Metrics metricas = new Metrics();
-        long inicio = System.nanoTime();
-        long memAntes = medirMemoriaUsada();
-
         // Cada no do heap e um par {valor, indiceRepresentante}.
         PriorityQueue<long[]> heap = new PriorityQueue<>(
                 Math.max(1, n), Comparator.comparingLong((long[] no) -> no[0]).reversed());
@@ -105,17 +102,9 @@ public class KarmarkarKarpPartition implements PartitionAlgorithm {
             }
         }
 
-        long memDepois = medirMemoriaUsada();
-        metricas.setTempoExecucaoNanos(System.nanoTime() - inicio);
-        metricas.setMemoriaUsadaBytes(Math.max(0, memDepois - memAntes));
         metricas.registrarProfundidade(profundidadeMaxima);
 
         return new PartitionResult(getNome(), grupo, somaA, somaB, metricas);
-    }
-
-    private long medirMemoriaUsada() {
-        Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory() - runtime.freeMemory();
     }
 
     @Override

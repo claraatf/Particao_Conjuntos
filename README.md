@@ -279,7 +279,7 @@ bash scripts/executar_sem_maven.sh --rapido
 bash scripts/executar_sem_maven.sh
 ```
 
-O script verifica se o JDK está instalado, compila as 16 classes em `build/classes` e executa o
+O script verifica se o JDK está instalado, compila todas as classes-fonte em `build/classes` e executa o
 programa, exibindo mensagens claras em cada etapa.
 
 **Se preferir digitar os comandos manualmente**, sem usar o script:
@@ -469,7 +469,7 @@ java -cp build/classes br.edu.taal.particao.Main --rapido
 Para cada execução (`Metrics` e `ExecutionRecord`):
 
 - tempo de execução (mediana de repetições, após *warm-up* da JVM);
-- consumo de memória;
+- memória alocada no heap pela thread durante a execução;
 - número de estados explorados;
 - número de chamadas recursivas;
 - número de podas realizadas;
@@ -553,6 +553,7 @@ TAAL/
     │   │   ├── Metrics.java                   # métricas de uma execução
     │   │   └── PartitionResult.java           # resultado + cálculo de GAP
     │   ├── algorithms/
+    │   │   ├── AbstractPartitionAlgorithm.java      # instrumentação uniforme de tempo e memória
     │   │   ├── PartitionAlgorithm.java        # contrato comum
     │   │   ├── BacktrackingPartition.java
     │   │   ├── BranchAndBoundPartition.java
@@ -577,9 +578,15 @@ O arquivo gerado tem uma linha por (instância × algoritmo), com as colunas:
 ```
 perfil, tamanho, instancia, algoritmo, exato, status, soma_a, soma_b, diferenca,
 diferenca_referencia, referencia_comprovada, gap_absoluto, gap_percentual,
-desequilibrio_relativo_pct, atingiu_otimo, tempo_ms, memoria_mb,
+desequilibrio_relativo_pct, atingiu_otimo, tempo_ms, memoria_alocada_mb,
 estados_explorados, chamadas_recursivas, podas, profundidade_maxima, observacao
 ```
+
+A coluna `memoria_alocada_mb` registra o total de bytes alocados no heap pela thread durante a
+resolução completa. Ela não representa apenas os objetos que permaneceram vivos ao final e, por
+isso, não é anulada quando o coletor de lixo libera estruturas temporárias. Em uma JVM que não
+ofereça o contador de alocações por thread, a coluna fica vazia em vez de registrar um zero
+enganoso.
 
 Para uma análise de qualidade estatisticamente válida, filtre por
 `referencia_comprovada = true` — caso contrário estará comparando heurísticas com elas mesmas.

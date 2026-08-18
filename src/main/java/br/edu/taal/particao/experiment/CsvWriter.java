@@ -35,7 +35,7 @@ public class CsvWriter {
             "desequilibrio_relativo_pct",
             "atingiu_otimo",
             "tempo_ms",
-            "memoria_mb",
+            "memoria_alocada_mb",
             "estados_explorados",
             "chamadas_recursivas",
             "podas",
@@ -80,7 +80,10 @@ public class CsvWriter {
             linha.append(String.format(Locale.US, "%.6f", resultado.getDesequilibrioRelativo())).append(',');
             linha.append(valorOuVazio(registro.atingiuOtimo())).append(',');
             linha.append(String.format(Locale.US, "%.4f", metricas.getTempoExecucaoMillis())).append(',');
-            linha.append(String.format(Locale.US, "%.4f", metricas.getMemoriaUsadaMB())).append(',');
+            if (metricas.isMemoriaAlocadaDisponivel()) {
+                linha.append(String.format(Locale.US, "%.4f", metricas.getMemoriaAlocadaMB()));
+            }
+            linha.append(',');
             linha.append(metricas.getEstadosExplorados()).append(',');
             linha.append(metricas.getChamadasRecursivas()).append(',');
             linha.append(metricas.getPodasRealizadas()).append(',');

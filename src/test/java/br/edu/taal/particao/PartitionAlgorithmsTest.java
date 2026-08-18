@@ -202,4 +202,24 @@ class PartitionAlgorithmsTest {
             assertEquals(0, resultado.getDiferenca(), algoritmo.getNome() + " falhou em instancia vazia");
         }
     }
+
+    @Test
+    void todosOsAlgoritmosDevemRegistrarTempoEMemoriaDeFormaUniforme() {
+        Instance instancia = new Instance("metricas", new int[]{19, 17, 13, 11, 7, 5, 3, 2});
+
+        for (PartitionAlgorithm algoritmo : todosAlgoritmos()) {
+            PartitionResult resultado = algoritmo.solve(instancia);
+
+            assertTrue(resultado.getMetricas().getTempoExecucaoNanos() > 0,
+                    algoritmo.getNome() + " nao registrou o tempo da execucao completa");
+
+            if (resultado.getMetricas().isMemoriaAlocadaDisponivel()) {
+                assertTrue(resultado.getMetricas().getMemoriaAlocadaBytes() > 0,
+                        algoritmo.getNome() + " deveria registrar os bytes alocados no heap");
+            } else {
+                assertEquals(-1, resultado.getMetricas().getMemoriaAlocadaBytes(),
+                        "Medicao indisponivel deve ser representada por -1");
+            }
+        }
+    }
 }

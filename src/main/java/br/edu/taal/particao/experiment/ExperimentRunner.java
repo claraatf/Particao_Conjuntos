@@ -38,8 +38,9 @@ public class ExperimentRunner {
 
     /**
      * Executa o algoritmo sobre a instancia. Retorna um registro de sucesso
-     * com a mediana dos tempos medidos, ou um registro de falha caso o
-     * algoritmo estoure o tempo limite ou nao consiga alocar memoria.
+     * com as medianas do tempo e dos bytes alocados nas repeticoes, ou um
+     * registro de falha caso o algoritmo estoure o tempo limite ou nao
+     * consiga alocar memoria.
      */
     public ExecutionRecord executar(PartitionAlgorithm algoritmo, Instance instancia, String perfil) {
         ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
@@ -55,14 +56,23 @@ public class ExperimentRunner {
                 }
                 PartitionResult melhorMedicao = null;
                 List<Long> tempos = new ArrayList<>();
+                List<Long> memoriasAlocadas = new ArrayList<>();
                 for (int i = 0; i < repeticoesMedicao; i++) {
                     PartitionResult atual = algoritmo.solve(instancia);
                     tempos.add(atual.getMetricas().getTempoExecucaoNanos());
+                    if (atual.getMetricas().isMemoriaAlocadaDisponivel()) {
+                        memoriasAlocadas.add(atual.getMetricas().getMemoriaAlocadaBytes());
+                    }
                     melhorMedicao = atual;
                 }
                 if (melhorMedicao != null && !tempos.isEmpty()) {
                     tempos.sort(Long::compareTo);
                     melhorMedicao.getMetricas().setTempoExecucaoNanos(tempos.get(tempos.size() / 2));
+                    if (!memoriasAlocadas.isEmpty()) {
+                        memoriasAlocadas.sort(Long::compareTo);
+                        melhorMedicao.getMetricas().setMemoriaAlocadaBytes(
+                                memoriasAlocadas.get(memoriasAlocadas.size() / 2));
+                    }
                 }
                 return melhorMedicao;
             });

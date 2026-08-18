@@ -21,7 +21,7 @@ import br.edu.taal.particao.model.PartitionResult;
  *
  * <p>Complexidade de tempo no pior caso: O(2^n).</p>
  */
-public class BacktrackingPartition implements PartitionAlgorithm {
+public class BacktrackingPartition extends AbstractPartitionAlgorithm {
 
     private int[] elementos;
     private Metrics metricas;
@@ -30,25 +30,18 @@ public class BacktrackingPartition implements PartitionAlgorithm {
     private boolean encontrouOtimoAbsoluto;
 
     @Override
-    public PartitionResult solve(Instance instance) {
+    protected PartitionResult solveInternal(Instance instance) {
         this.elementos = instance.getElementos();
         this.metricas = new Metrics();
         this.melhorGrupo = new boolean[elementos.length];
         this.melhorDiferenca = Long.MAX_VALUE;
         this.encontrouOtimoAbsoluto = false;
 
-        long inicio = System.nanoTime();
-        long memAntes = medirMemoriaUsada();
-
         boolean[] grupoAtual = new boolean[elementos.length];
         if (elementos.length > 0) {
             grupoAtual[0] = true; // quebra de simetria
             backtrack(1, elementos[0], 0, grupoAtual);
         }
-
-        long memDepois = medirMemoriaUsada();
-        metricas.setTempoExecucaoNanos(System.nanoTime() - inicio);
-        metricas.setMemoriaUsadaBytes(Math.max(0, memDepois - memAntes));
 
         long somaA = 0;
         long somaB = 0;
@@ -97,11 +90,6 @@ public class BacktrackingPartition implements PartitionAlgorithm {
 
         grupoAtual[indice] = false;
         backtrack(indice + 1, somaA, somaB + valor, grupoAtual);
-    }
-
-    private long medirMemoriaUsada() {
-        Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory() - runtime.freeMemory();
     }
 
     @Override

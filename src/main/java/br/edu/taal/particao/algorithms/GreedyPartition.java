@@ -16,17 +16,14 @@ import java.util.Arrays;
  *
  * <p>Complexidade: O(n log n), dominada pela ordenacao.</p>
  */
-public class GreedyPartition implements PartitionAlgorithm {
+public class GreedyPartition extends AbstractPartitionAlgorithm {
 
     @Override
-    public PartitionResult solve(Instance instance) {
+    protected PartitionResult solveInternal(Instance instance) {
         int[] originais = instance.getElementos();
         int n = originais.length;
 
         Metrics metricas = new Metrics();
-        long inicio = System.nanoTime();
-        long memAntes = medirMemoriaUsada();
-
         Integer[] indices = new Integer[n];
         for (int i = 0; i < n; i++) {
             indices[i] = i;
@@ -50,17 +47,9 @@ public class GreedyPartition implements PartitionAlgorithm {
             }
         }
 
-        long memDepois = medirMemoriaUsada();
-        metricas.setTempoExecucaoNanos(System.nanoTime() - inicio);
-        metricas.setMemoriaUsadaBytes(Math.max(0, memDepois - memAntes));
         metricas.registrarProfundidade(n);
 
         return new PartitionResult(getNome(), grupo, somaA, somaB, metricas);
-    }
-
-    private long medirMemoriaUsada() {
-        Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory() - runtime.freeMemory();
     }
 
     @Override
