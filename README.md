@@ -192,9 +192,11 @@ Ao final, o programa informa onde gravou o CSV, por exemplo:
 
 ```
 Resultados gravados em: C:\...\TAAL\resultados\resultados_rapido.csv
+Dashboard gravado em: C:\...\TAAL\resultados\resultados_rapido_dashboard.html
 ```
 
-O arquivo aparecerá na pasta `resultados/` dentro do projeto.
+Os dois arquivos aparecerão na pasta `resultados/` dentro do projeto. Dê dois cliques no arquivo
+HTML para abrir o dashboard no navegador; ele não requer internet nem servidor local.
 
 ---
 
@@ -399,8 +401,9 @@ Instancia uniforme_pequeno_n10_v0          (n=   10, soma=490)
    KarmarkarKarp          diferenca=0            tempo=    0.074 ms  estados=9            gap=0.00%
    ...
 
-Bateria concluida em 7.8 segundos (250 registros).
+Bateria concluida em 10.4 segundos (250 registros).
 Resultados gravados em: ...\TAAL\resultados\resultados_rapido.csv
+Dashboard gravado em: ...\TAAL\resultados\resultados_rapido_dashboard.html
 
 === Resumo geral (todas as combinacoes planejadas) ===
 Algoritmo               Registros   Sucessos Tempo medio(ms)
@@ -443,12 +446,31 @@ Duas observações importantes sobre essa saída, porque **não são erros**:
 
 Os números exatos de tempo variam conforme a máquina; as proporções entre algoritmos, não.
 
+### Dashboard de métricas
+
+Cada bateria também produz automaticamente um dashboard HTML ao lado do CSV. O nome é derivado da
+saída escolhida: `resultados.csv` gera `resultados_dashboard.html`, e uma saída personalizada como
+`saida/meu_teste.csv` gera `saida/meu_teste_dashboard.html`.
+
+O dashboard oferece, em um único arquivo:
+
+- filtros por perfil, algoritmo e status;
+- indicadores de cobertura, sucesso, tempo, memória e limites observados;
+- gráficos de tempo, memória e estados por tamanho em escala logarítmica;
+- distribuição de status por algoritmo;
+- comparação de qualidade e taxa de ótimo sobre a mesma base comum;
+- tabela detalhada e paginada das execuções.
+
+Todo o CSS, JavaScript e conjunto de dados fica embutido no HTML. Portanto, a página pode ser
+copiada para outra máquina e aberta diretamente, sem instalar bibliotecas ou acessar a internet.
+
 ---
 
 ## Executando os testes automatizados
 
 Os testes verificam corretude: preservação da soma total, concordância entre os três algoritmos
-exatos, heurísticas nunca superando o ótimo e reprodutibilidade do gerador.
+exatos, heurísticas nunca superando o ótimo, reprodutibilidade do gerador e geração segura do
+dashboard autônomo.
 
 **No VS Code:** clique no ícone de **Testing** (frasco de laboratório) na barra lateral e no botão
 ▶ **Run Tests**. Também é possível abrir `src/test/java/br/edu/taal/particao/PartitionAlgorithmsTest.java`
@@ -611,12 +633,14 @@ TAAL/
     │       ├── ExperimentRunner.java          # execução com warm-up e tempo limite
     │       ├── ScalabilityPolicy.java         # interrupção adaptativa por algoritmo/perfil
     │       ├── ExecutionRecord.java           # uma linha da tabela de resultados
-    │       └── CsvWriter.java                 # exportação para análise
+    │       ├── CsvWriter.java                 # exportação para análise
+    │       └── DashboardGenerator.java        # dashboard HTML autônomo e interativo
     └── test/java/br/edu/taal/particao/
-        └── PartitionAlgorithmsTest.java       # testes de corretude
+        ├── PartitionAlgorithmsTest.java       # testes de corretude
+        └── DashboardGeneratorTest.java        # testes da exportação visual
 ```
 
-## Saída em CSV
+## Saídas em CSV e HTML
 
 O arquivo gerado tem uma linha por (instância × algoritmo), com as colunas:
 

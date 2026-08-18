@@ -20,3 +20,4 @@ Thumbs.db
 
 # Resultados de experimentos gerados localmente
 resultados/*.csv
+resultados/*.html

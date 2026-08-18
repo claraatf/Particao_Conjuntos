@@ -7,6 +7,7 @@ import br.edu.taal.particao.algorithms.GreedyPartition;
 import br.edu.taal.particao.algorithms.KarmarkarKarpPartition;
 import br.edu.taal.particao.algorithms.PartitionAlgorithm;
 import br.edu.taal.particao.experiment.CsvWriter;
+import br.edu.taal.particao.experiment.DashboardGenerator;
 import br.edu.taal.particao.experiment.ExecutionRecord;
 import br.edu.taal.particao.experiment.ExperimentRunner;
 import br.edu.taal.particao.experiment.InstanceGenerator;
@@ -218,12 +219,16 @@ public class Main {
         }
 
         new CsvWriter().escrever(arquivoSaida, todosRegistros);
+        Path arquivoDashboard = DashboardGenerator.caminhoDashboard(arquivoSaida);
+        new DashboardGenerator().escrever(
+                arquivoDashboard, todosRegistros, descricaoModo(modo), seed);
 
         double duracaoSegundos = (System.nanoTime() - inicioTotal) / 1_000_000_000.0;
         System.out.println();
         System.out.printf(Locale.US, "Bateria concluida em %.1f segundos (%d registros).%n",
                 duracaoSegundos, todosRegistros.size());
         System.out.println("Resultados gravados em: " + arquivoSaida.toAbsolutePath());
+        System.out.println("Dashboard gravado em: " + arquivoDashboard.toAbsolutePath());
         imprimirResumo(todosRegistros);
     }
 
