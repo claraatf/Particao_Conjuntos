@@ -13,8 +13,10 @@ import br.edu.taal.particao.experiment.ExperimentRunner;
 import br.edu.taal.particao.experiment.InstanceGenerator;
 import br.edu.taal.particao.experiment.ScalabilityPolicy;
 import br.edu.taal.particao.model.Instance;
+import br.edu.taal.particao.ui.ExperimentGui;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -35,7 +37,8 @@ import java.util.Set;
  * console.</p>
  *
  * <p>Uso: {@code java -jar particao-conjuntos.jar [seed] [arquivoSaida]
- * [--rapido | --escalabilidade]}</p>
+ * [--rapido | --escalabilidade]} ou {@code java -jar
+ * particao-conjuntos.jar --gui}.</p>
  *
  * <p>A opcao {@code --rapido} executa uma bateria reduzida (cerca de 10
  * segundos), util para verificar rapidamente que o ambiente esta
@@ -96,6 +99,26 @@ public class Main {
     private static final int LIMITE_ALGORITMOS_EXPONENCIAIS = 26;
 
     public static void main(String[] args) throws IOException {
+        if (contemOpcaoGui(args)) {
+            if (args.length != 1) {
+                throw new IllegalArgumentException(
+                        "Use --gui isoladamente; modo, seed e saida sao escolhidos na interface.");
+            }
+            ExperimentGui.abrir();
+            return;
+        }
+        executarExperimentos(args, System.out);
+    }
+
+    /**
+     * Executa a mesma bateria usada pela linha de comando, enviando o progresso
+     * ao fluxo informado. A separacao permite que a interface Swing reutilize
+     * integralmente a logica experimental sem redirecionar {@code System.out}.
+     */
+    public static void executarExperimentos(String[] args, PrintStream saida) throws IOException {
+        if (saida == null) {
+            throw new IllegalArgumentException("O fluxo de saida nao pode ser nulo.");
+        }
         Modo modo = Modo.COMPLETO;
         boolean modoExplicitamenteSelecionado = false;
         List<String> posicionais = new ArrayList<>();
@@ -164,18 +187,18 @@ public class Main {
                 new GreedyPartition(),
                 new KarmarkarKarpPartition());
 
-        System.out.println("=== Problema da Particao de Conjuntos - Estudo Comparativo ===");
-        System.out.println("Modo: " + descricaoModo(modo));
-        System.out.println("Seed: " + seed);
-        System.out.println("Repeticoes por execucao: " + aquecimentos
+        saida.println("=== Problema da Particao de Conjuntos - Estudo Comparativo ===");
+        saida.println("Modo: " + descricaoModo(modo));
+        saida.println("Seed: " + seed);
+        saida.println("Repeticoes por execucao: " + aquecimentos
                 + " aquecimento(s) + " + medicoes + " medicao(oes)");
-        System.out.println("Tempo limite por combinacao: " + tempoLimite + "s");
-        System.out.println("Ambiente: Java " + System.getProperty("java.version")
+        saida.println("Tempo limite por combinacao: " + tempoLimite + "s");
+        saida.println("Ambiente: Java " + System.getProperty("java.version")
                 + " | " + System.getProperty("os.name")
                 + " | processadores disponiveis: " + Runtime.getRuntime().availableProcessors()
                 + " | memoria maxima da JVM: "
                 + (Runtime.getRuntime().maxMemory() / (1024 * 1024)) + " MB");
-        System.out.println();
+        saida.println();
 
         long inicioTotal = System.nanoTime();
         List<ExecutionRecord> todosRegistros = new ArrayList<>();
@@ -213,7 +236,7 @@ public class Main {
 
                     runner.definirReferenciaOtima(registrosDaInstancia);
                     todosRegistros.addAll(registrosDaInstancia);
-                    imprimirProgresso(instancia, registrosDaInstancia);
+                    imprimirProgresso(instancia, registrosDaInstancia, saida);
                 }
             }
         }
@@ -224,12 +247,16 @@ public class Main {
                 arquivoDashboard, todosRegistros, descricaoModo(modo), seed);
 
         double duracaoSegundos = (System.nanoTime() - inicioTotal) / 1_000_000_000.0;
-        System.out.println();
-        System.out.printf(Locale.US, "Bateria concluida em %.1f segundos (%d registros).%n",
+        saida.println();
+        saida.printf(Locale.US, "Bateria concluida em %.1f segundos (%d registros).%n",
                 duracaoSegundos, todosRegistros.size());
-        System.out.println("Resultados gravados em: " + arquivoSaida.toAbsolutePath());
-        System.out.println("Dashboard gravado em: " + arquivoDashboard.toAbsolutePath());
-        imprimirResumo(todosRegistros);
+        saida.println("Resultados gravados em: " + arquivoSaida.toAbsolutePath());
+        saida.println("Dashboard gravado em: " + arquivoDashboard.toAbsolutePath());
+        imprimirResumo(todosRegistros, saida);
+    }
+
+    private static boolean contemOpcaoGui(String[] args) {
+        return Arrays.stream(args).anyMatch("--gui"::equalsIgnoreCase);
     }
 
     /** Evita submeter algoritmos exponenciais a instancias grandes demais. */
@@ -267,8 +294,9 @@ public class Main {
         };
     }
 
-    private static void imprimirProgresso(Instance instancia, List<ExecutionRecord> registros) {
-        System.out.printf("Instancia %-32s (n=%5d, soma=%d)%n",
+    private static void imprimirProgresso(Instance instancia, List<ExecutionRecord> registros,
+                                          PrintStream saida) {
+        saida.printf("Instancia %-32s (n=%5d, soma=%d)%n",
                 instancia.getNome(), instancia.getTamanho(), instancia.getSomaTotal());
         for (ExecutionRecord registro : registros) {
             if (registro.isSucesso()) {
@@ -284,7 +312,7 @@ public class Main {
                 } else {
                     qualidade = "gap=-";
                 }
-                System.out.printf(Locale.US,
+                saida.printf(Locale.US,
                         "   %-22s diferenca=%-12d tempo=%9.3f ms  estados=%-12d %s%n",
                         registro.getNomeAlgoritmo(),
                         registro.getResultado().getDiferenca(),
@@ -292,7 +320,7 @@ public class Main {
                         registro.getResultado().getMetricas().getEstadosExplorados(),
                         qualidade);
             } else {
-                System.out.printf("   %-22s %s (%s)%n",
+                saida.printf("   %-22s %s (%s)%n",
                         registro.getNomeAlgoritmo(), registro.getStatus(), registro.getObservacao());
             }
         }
@@ -307,15 +335,15 @@ public class Main {
      * comparar medias calculadas sobre conjuntos diferentes de instancias
      * levaria a conclusoes invertidas.
      */
-    private static void imprimirResumo(List<ExecutionRecord> registros) {
+    private static void imprimirResumo(List<ExecutionRecord> registros, PrintStream saida) {
         List<String> algoritmos = registros.stream()
                 .map(ExecutionRecord::getNomeAlgoritmo)
                 .distinct()
                 .toList();
 
-        System.out.println();
-        System.out.println("=== Resumo geral (todas as combinacoes planejadas) ===");
-        System.out.printf("%-22s %10s %10s %14s%n",
+        saida.println();
+        saida.println("=== Resumo geral (todas as combinacoes planejadas) ===");
+        saida.printf("%-22s %10s %10s %14s%n",
                 "Algoritmo", "Registros", "Sucessos", "Tempo medio(ms)");
 
         for (String algoritmo : algoritmos) {
@@ -326,27 +354,27 @@ public class Main {
                     .mapToDouble(r -> r.getResultado().getMetricas().getTempoExecucaoMillis())
                     .average().orElse(Double.NaN);
 
-            System.out.printf(Locale.US, "%-22s %10d %10d %14.3f%n",
+            saida.printf(Locale.US, "%-22s %10d %10d %14.3f%n",
                     algoritmo, doAlgoritmo.size(), sucessos, tempoMedio);
         }
 
-        System.out.println();
-        System.out.println("=== Distribuicao dos status ===");
-        System.out.printf("%-20s %10s%n", "Status", "Registros");
+        saida.println();
+        saida.println("=== Distribuicao dos status ===");
+        saida.printf("%-20s %10s%n", "Status", "Registros");
         for (ExecutionRecord.Status status : ExecutionRecord.Status.values()) {
             long quantidade = registros.stream()
                     .filter(registro -> registro.getStatus() == status)
                     .count();
-            System.out.printf("%-20s %10d%n", status, quantidade);
+            saida.printf("%-20s %10d%n", status, quantidade);
         }
 
         Set<String> baseComum = instanciasComunsATodos(registros, algoritmos);
 
-        System.out.println();
-        System.out.println("=== Qualidade da solucao (base comum a todos os algoritmos) ===");
-        System.out.println("Base comparavel: " + baseComum.size()
+        saida.println();
+        saida.println("=== Qualidade da solucao (base comum a todos os algoritmos) ===");
+        saida.println("Base comparavel: " + baseComum.size()
                 + " instancias com otimo comprovado em que os cinco algoritmos concluiram.");
-        System.out.printf("%-22s %10s %12s %16s%n",
+        saida.printf("%-22s %10s %12s %16s%n",
                 "Algoritmo", "Amostras", "% Otimos", "Desequilibrio%");
 
         for (String algoritmo : algoritmos) {
@@ -356,7 +384,7 @@ public class Main {
                     .toList();
 
             if (comparaveis.isEmpty()) {
-                System.out.printf("%-22s %10d %12s %16s%n", algoritmo, 0, "-", "-");
+                saida.printf("%-22s %10d %12s %16s%n", algoritmo, 0, "-", "-");
                 continue;
             }
 
@@ -366,15 +394,15 @@ public class Main {
                     .mapToDouble(r -> r.getResultado().getDesequilibrioRelativo())
                     .average().orElse(Double.NaN);
 
-            System.out.printf(Locale.US, "%-22s %10d %11.1f%% %15.6f%n",
+            saida.printf(Locale.US, "%-22s %10d %11.1f%% %15.6f%n",
                     algoritmo, comparaveis.size(),
                     100.0 * otimos / comparaveis.size(), desequilibrioMedio);
         }
 
-        System.out.println();
-        System.out.println("Nota: as instancias maiores ficam fora da base comum quando algum algoritmo");
-        System.out.println("nao conclui ou e interrompido pelos limites. O CSV traz todas as combinacoes,");
-        System.out.println("com referencia_comprovada indicando se o otimo e garantido.");
+        saida.println();
+        saida.println("Nota: as instancias maiores ficam fora da base comum quando algum algoritmo");
+        saida.println("nao conclui ou e interrompido pelos limites. O CSV traz todas as combinacoes,");
+        saida.println("com referencia_comprovada indicando se o otimo e garantido.");
     }
 
     /**

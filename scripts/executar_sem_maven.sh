@@ -6,6 +6,7 @@
 #   ./scripts/executar_sem_maven.sh                 # bateria completa
 #   ./scripts/executar_sem_maven.sh --rapido        # bateria reduzida (~10 segundos)
 #   ./scripts/executar_sem_maven.sh --escalabilidade # limites empiricos
+#   ./scripts/executar_sem_maven.sh --gui            # abre a interface grafica
 #   ./scripts/executar_sem_maven.sh --rapido 7      # com seed 7
 
 set -euo pipefail
@@ -38,6 +39,6 @@ echo "Compilacao concluida."
 
 # 3. Executa repassando todos os argumentos recebidos
 echo ""
-echo "Executando os experimentos..."
+echo "Iniciando a aplicacao..."
 echo ""
 java -Xmx4g -cp "$DESTINO" br.edu.taal.particao.Main "$@"

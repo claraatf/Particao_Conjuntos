@@ -6,7 +6,8 @@ Projeto da disciplina de Técnicas de Análise e Algoritmos (TAAL).
 > [Como executar](#como-executar), com passo a passo completo para **VS Code**, **IntelliJ IDEA** e
 > **linha de comando**. Existe um caminho de execução que **não exige Maven instalado** —
 > apenas o JDK. Se algo falhar, a seção [Solução de problemas](#solução-de-problemas) cobre os
-> erros mais comuns com a mensagem exata e o que fazer.
+> erros mais comuns com a mensagem exata e o que fazer. Também há uma **interface gráfica Swing**
+> opcional para configurar a bateria, acompanhar o progresso e abrir os resultados.
 
 ---
 
@@ -132,6 +133,30 @@ O programa tem três modos:
 > **Sugestão:** rode primeiro no modo rápido. Depois use o completo para os dados comparativos e o
 > de escalabilidade para observar quando cada estratégia deixa de ser viável.
 
+### Interface gráfica Swing
+
+A interface é opcional e usa exatamente o mesmo executor da linha de comando. Ela permite escolher
+o modo, a seed e o CSV de saída, acompanha o log sem travar a janela e, ao terminar, oferece botões
+para abrir o dashboard e a pasta dos resultados. Não requer nenhuma biblioteca além do próprio JDK.
+
+Depois de gerar o JAR com `mvn clean package`, abra a interface com:
+
+```bash
+java -Xmx4g -jar target/particao-conjuntos-1.0-SNAPSHOT.jar --gui
+```
+
+Sem Maven, no Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\executar_sem_maven.ps1 -Interface
+```
+
+No Linux, macOS ou Git Bash:
+
+```bash
+bash scripts/executar_sem_maven.sh --gui
+```
+
 ---
 
 ### Opção A — VS Code (passo a passo)
@@ -177,6 +202,7 @@ Existem duas formas. A primeira é a mais direta:
 4. A saída aparece na aba **DEBUG CONSOLE**, na parte inferior da tela.
 5. Para a bateria completa, repita escolhendo **"2. Bateria COMPLETA (1 a 5 minutos)"**.
 6. Para localizar os limites práticos, escolha **"3. ESCALABILIDADE (limites empiricos)"**.
+7. Para usar a janela, escolha **"4. INTERFACE GRAFICA"**.
 
 *Forma 2 — pelo botão Run acima do método `main`*
 
@@ -246,6 +272,8 @@ Isso executa a **bateria completa**. Para rodar a bateria rápida:
 
 Para o modo de escalabilidade, use `--escalabilidade` no campo **Program arguments** no lugar de
 `--rapido`.
+
+Para abrir a interface gráfica pelo IntelliJ, use `--gui` em **Program arguments**.
 
 ---
 
@@ -366,11 +394,13 @@ Todos são opcionais e podem ser combinados em qualquer ordem:
 |-----------|-------------|--------|
 | `--rapido` | executa a bateria reduzida | ausente (bateria completa) |
 | `--escalabilidade` | executa tamanhos graduais com interrupção adaptativa | ausente |
+| `--gui` | abre a interface gráfica Swing | ausente |
 | primeiro número | *seed* do gerador de instâncias | `42` |
 | segundo valor | caminho do arquivo CSV de saída | `resultados/resultados.csv` |
 
-`--rapido` e `--escalabilidade` são mutuamente exclusivos. Quando nenhum caminho é informado, o
-modo de escalabilidade grava `resultados/resultados_escalabilidade.csv`.
+`--rapido` e `--escalabilidade` são mutuamente exclusivos. `--gui` deve ser usado isoladamente,
+pois modo, seed e saída são escolhidos na janela. Quando nenhum caminho é informado, o modo de
+escalabilidade grava `resultados/resultados_escalabilidade.csv`.
 
 Exemplo com todos os argumentos:
 
@@ -469,8 +499,8 @@ copiada para outra máquina e aberta diretamente, sem instalar bibliotecas ou ac
 ## Executando os testes automatizados
 
 Os testes verificam corretude: preservação da soma total, concordância entre os três algoritmos
-exatos, heurísticas nunca superando o ótimo, reprodutibilidade do gerador e geração segura do
-dashboard autônomo.
+exatos, heurísticas nunca superando o ótimo, reprodutibilidade do gerador, geração segura do
+dashboard autônomo e validação das configurações da interface sem precisar abrir uma janela.
 
 **No VS Code:** clique no ícone de **Testing** (frasco de laboratório) na barra lateral e no botão
 ▶ **Run Tests**. Também é possível abrir `src/test/java/br/edu/taal/particao/PartitionAlgorithmsTest.java`
@@ -506,6 +536,7 @@ mvn test
 | `mvn não é reconhecido` | Maven não instalado | Use a [Opção C](#opção-c--linha-de-comando-sem-maven-mais-simples), que dispensa o Maven |
 | `OutOfMemoryError: Java heap space` | Pouca memória para a JVM | Rode com `-Xmx4g`. Se a máquina tiver pouca RAM, use `--rapido` |
 | O programa parece travado | Bateria completa em andamento | É normal levar de 1 a 5 minutos. Use `--rapido` para verificar rapidamente |
+| A interface informa que não há monitor | Execução em servidor ou terminal *headless* | Use os mesmos modos pela linha de comando; a interface exige um ambiente gráfico |
 | `MEMORIA_INVIAVEL` na saída | **Não é erro** | É um resultado esperado do experimento, veja [esta observação](#o-que-você-deve-ver-ao-executar) |
 | `WARNING: A restricted method in java.lang.System has been called` | **Não é erro** | Aviso emitido pelo agente do próprio IntelliJ (`idea_rt.jar`) em JDKs recentes. Não vem do código do projeto e não afeta os resultados |
 
@@ -614,6 +645,8 @@ TAAL/
 └── src/
     ├── main/java/br/edu/taal/particao/
     │   ├── Main.java                          # bateria de experimentos e relatório
+    │   ├── ui/
+    │   │   └── ExperimentGui.java             # interface Swing opcional e responsiva
     │   ├── model/
     │   │   ├── Instance.java                  # instância do problema
     │   │   ├── Metrics.java                   # métricas de uma execução
@@ -637,7 +670,8 @@ TAAL/
     │       └── DashboardGenerator.java        # dashboard HTML autônomo e interativo
     └── test/java/br/edu/taal/particao/
         ├── PartitionAlgorithmsTest.java       # testes de corretude
-        └── DashboardGeneratorTest.java        # testes da exportação visual
+        ├── DashboardGeneratorTest.java        # testes da exportação visual
+        └── ui/ExperimentGuiTest.java          # testes headless da configuração da interface
 ```
 
 ## Saídas em CSV e HTML

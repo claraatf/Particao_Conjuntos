@@ -5,11 +5,13 @@
 #   .\scripts\executar_sem_maven.ps1              # bateria completa
 #   .\scripts\executar_sem_maven.ps1 -Rapido      # bateria reduzida (~10 segundos)
 #   .\scripts\executar_sem_maven.ps1 -Escalabilidade # limites empiricos
+#   .\scripts\executar_sem_maven.ps1 -Interface   # abre a interface grafica
 #   .\scripts\executar_sem_maven.ps1 -Seed 7 -Xmx 4g
 
 param(
     [switch]$Rapido,
     [switch]$Escalabilidade,
+    [switch]$Interface,
     [long]$Seed = 42,
     [string]$Xmx = "4g",
     [string]$Saida = ""
@@ -17,8 +19,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-if ($Rapido -and $Escalabilidade) {
-    Write-Host "ERRO: use apenas -Rapido ou -Escalabilidade." -ForegroundColor Red
+$modosSelecionados = @($Rapido.IsPresent, $Escalabilidade.IsPresent, $Interface.IsPresent) |
+        Where-Object { $_ }
+if ($modosSelecionados.Count -gt 1) {
+    Write-Host "ERRO: use apenas -Rapido, -Escalabilidade ou -Interface." -ForegroundColor Red
     exit 1
 }
 
@@ -63,13 +67,22 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Compilacao concluida."
 
 # 3. Monta os argumentos e executa
-$argumentos = @([string]$Seed)
-if ($Saida -ne "") { $argumentos += $Saida }
-if ($Rapido) { $argumentos += "--rapido" }
-if ($Escalabilidade) { $argumentos += "--escalabilidade" }
+$argumentos = @()
+if ($Interface) {
+    $argumentos += "--gui"
+} else {
+    $argumentos += [string]$Seed
+    if ($Saida -ne "") { $argumentos += $Saida }
+    if ($Rapido) { $argumentos += "--rapido" }
+    if ($Escalabilidade) { $argumentos += "--escalabilidade" }
+}
 
 Write-Host ""
-Write-Host "Executando os experimentos..."
+if ($Interface) {
+    Write-Host "Abrindo a interface grafica..."
+} else {
+    Write-Host "Executando os experimentos..."
+}
 Write-Host ""
 java "-Xmx$Xmx" -cp $destino br.edu.taal.particao.Main @argumentos
 if ($LASTEXITCODE -ne 0) {
