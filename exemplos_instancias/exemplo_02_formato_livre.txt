@@ -1,0 +1,9 @@
+# Exemplo 2: os separadores podem ser misturados livremente.
+# nome: caso_formato_livre
+
+100, 200, 300
+400; 500
+600    700   800
+
+# Comentarios podem aparecer no fim da linha:
+900 1000   # dois ultimos valores

@@ -10,6 +10,8 @@ import br.edu.taal.particao.experiment.CsvWriter;
 import br.edu.taal.particao.experiment.DashboardGenerator;
 import br.edu.taal.particao.experiment.ExecutionRecord;
 import br.edu.taal.particao.experiment.ExperimentRunner;
+import br.edu.taal.particao.experiment.InstanceFileReader;
+import br.edu.taal.particao.experiment.InstanceFormatException;
 import br.edu.taal.particao.experiment.InstanceGenerator;
 import br.edu.taal.particao.experiment.ScalabilityPolicy;
 import br.edu.taal.particao.model.Instance;
@@ -50,8 +52,18 @@ public class Main {
     private enum Modo {
         RAPIDO,
         COMPLETO,
-        ESCALABILIDADE
+        ESCALABILIDADE,
+        PERSONALIZADO
     }
+
+    /** Prefixo da opcao que aponta para arquivos de instancias externos. */
+    private static final String OPCAO_INSTANCIAS = "--instancias";
+
+    /** Prefixo da opcao que ajusta o corte aplicado aos algoritmos exponenciais. */
+    private static final String OPCAO_LIMITE_EXATOS = "--limite-exatos=";
+
+    /** Perfil atribuido as instancias lidas de arquivos externos. */
+    private static final String PERFIL_PERSONALIZADO = "PERSONALIZADA";
 
     /** Tamanhos da bateria completa. */
     private static final int[] TAMANHOS_COMPLETO = {10, 15, 20, 22, 24, 26, 100, 1_000, 10_000};
@@ -82,6 +94,12 @@ public class Main {
     private static final int AQUECIMENTOS_RAPIDO = 1;
     private static final int MEDICOES_RAPIDO = 3;
 
+    // A bateria externa pode conter muitas instancias, entao usa-se um numero
+    // moderado de repeticoes: suficiente para estabilizar o JIT sem multiplicar
+    // por nove o tempo total de correcao.
+    private static final int AQUECIMENTOS_PERSONALIZADO = 1;
+    private static final int MEDICOES_PERSONALIZADO = 3;
+
     // O modo de escalabilidade mede uma unica execucao para que o timeout
     // represente o custo de resolver uma instancia, e nao o lote estatistico.
     private static final int AQUECIMENTOS_ESCALABILIDADE = 0;
@@ -107,7 +125,19 @@ public class Main {
             ExperimentGui.abrir();
             return;
         }
-        executarExperimentos(args, System.out);
+
+        // Erros de uso e de formato sao previsiveis e devem ser apresentados de
+        // forma legivel: um rastreamento de pilha faria um arquivo mal
+        // formatado parecer uma falha do programa.
+        try {
+            executarExperimentos(args, System.out);
+        } catch (InstanceFormatException | IllegalArgumentException e) {
+            System.err.println();
+            System.err.println("ERRO: " + e.getMessage());
+            System.err.println();
+            System.err.println("Consulte instancias/README.md para o formato aceito.");
+            System.exit(1);
+        }
     }
 
     /**
@@ -121,19 +151,36 @@ public class Main {
         }
         Modo modo = Modo.COMPLETO;
         boolean modoExplicitamenteSelecionado = false;
+        Path caminhoInstancias = null;
+        int limiteExatos = LIMITE_ALGORITMOS_EXPONENCIAIS;
         List<String> posicionais = new ArrayList<>();
+
         for (String argumento : args) {
             Modo modoSolicitado = null;
             if ("--rapido".equalsIgnoreCase(argumento)) {
                 modoSolicitado = Modo.RAPIDO;
             } else if ("--escalabilidade".equalsIgnoreCase(argumento)) {
                 modoSolicitado = Modo.ESCALABILIDADE;
+            } else if (OPCAO_INSTANCIAS.equalsIgnoreCase(argumento)) {
+                modoSolicitado = Modo.PERSONALIZADO;
+                caminhoInstancias = InstanceFileReader.PASTA_PADRAO;
+            } else if (argumento.toLowerCase(Locale.ROOT).startsWith(OPCAO_INSTANCIAS + "=")) {
+                modoSolicitado = Modo.PERSONALIZADO;
+                String valor = argumento.substring(OPCAO_INSTANCIAS.length() + 1).trim();
+                if (valor.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "Informe o caminho: --instancias=<pasta ou arquivo>");
+                }
+                caminhoInstancias = Paths.get(valor);
+            } else if (argumento.toLowerCase(Locale.ROOT).startsWith(OPCAO_LIMITE_EXATOS)) {
+                limiteExatos = lerLimiteExatos(argumento);
+                continue;
             }
 
             if (modoSolicitado != null) {
                 if (modoExplicitamenteSelecionado) {
                     throw new IllegalArgumentException(
-                            "Use apenas um modo: --rapido ou --escalabilidade.");
+                            "Use apenas um modo: --rapido, --escalabilidade ou --instancias.");
                 }
                 modo = modoSolicitado;
                 modoExplicitamenteSelecionado = true;
@@ -144,7 +191,8 @@ public class Main {
 
         if (posicionais.size() > 2) {
             throw new IllegalArgumentException(
-                    "Uso: [seed] [arquivoSaida] [--rapido | --escalabilidade]");
+                    "Uso: [seed] [arquivoSaida] [--rapido | --escalabilidade | --instancias[=<caminho>]]"
+                            + " [--limite-exatos=<n>]");
         }
 
         long seed = !posicionais.isEmpty() ? Long.parseLong(posicionais.get(0)) : 42L;
@@ -160,16 +208,19 @@ public class Main {
             case RAPIDO -> VARIACOES_RAPIDO;
             case COMPLETO -> VARIACOES_COMPLETO;
             case ESCALABILIDADE -> VARIACOES_ESCALABILIDADE;
+            case PERSONALIZADO -> 0; // as instancias vem dos arquivos, nao do gerador
         };
         int aquecimentos = switch (modo) {
             case RAPIDO -> AQUECIMENTOS_RAPIDO;
             case COMPLETO -> AQUECIMENTOS_COMPLETO;
             case ESCALABILIDADE -> AQUECIMENTOS_ESCALABILIDADE;
+            case PERSONALIZADO -> AQUECIMENTOS_PERSONALIZADO;
         };
         int medicoes = switch (modo) {
             case RAPIDO -> MEDICOES_RAPIDO;
             case COMPLETO -> MEDICOES_COMPLETO;
             case ESCALABILIDADE -> MEDICOES_ESCALABILIDADE;
+            case PERSONALIZADO -> MEDICOES_PERSONALIZADO;
         };
         long tempoLimite = modo == Modo.ESCALABILIDADE
                 ? TEMPO_LIMITE_ESCALABILIDADE_SEGUNDOS
@@ -187,9 +238,18 @@ public class Main {
                 new GreedyPartition(),
                 new KarmarkarKarpPartition());
 
+        // As instancias externas sao lidas antes de qualquer saida: um arquivo
+        // malformado deve interromper a execucao imediatamente, com uma
+        // mensagem clara, em vez de no meio do relatorio.
+        List<Instance> instanciasPersonalizadas = modo == Modo.PERSONALIZADO
+                ? new InstanceFileReader().carregar(caminhoInstancias)
+                : List.of();
+
         saida.println("=== Problema da Particao de Conjuntos - Estudo Comparativo ===");
         saida.println("Modo: " + descricaoModo(modo));
-        saida.println("Seed: " + seed);
+        if (modo != Modo.PERSONALIZADO) {
+            saida.println("Seed: " + seed);
+        }
         saida.println("Repeticoes por execucao: " + aquecimentos
                 + " aquecimento(s) + " + medicoes + " medicao(oes)");
         saida.println("Tempo limite por combinacao: " + tempoLimite + "s");
@@ -198,45 +258,65 @@ public class Main {
                 + " | processadores disponiveis: " + Runtime.getRuntime().availableProcessors()
                 + " | memoria maxima da JVM: "
                 + (Runtime.getRuntime().maxMemory() / (1024 * 1024)) + " MB");
+
+        // Sem este aviso, quem colocar arquivos na pasta e executar sem a opcao
+        // veria apenas a bateria gerada, sem entender por que a sua foi ignorada.
+        if (modo != Modo.PERSONALIZADO && new InstanceFileReader().existemInstanciasNaPastaPadrao()) {
+            saida.println();
+            saida.println("AVISO: ha arquivos de instancias em '" + InstanceFileReader.PASTA_PADRAO
+                    + "', que NAO serao executados neste modo.");
+            saida.println("       Para executa-los, use a opcao --instancias.");
+        }
         saida.println();
 
         long inicioTotal = System.nanoTime();
         List<ExecutionRecord> todosRegistros = new ArrayList<>();
 
-        for (InstanceGenerator.Perfil perfil : perfis) {
-            for (int tamanho : tamanhos) {
-                for (int variacao = 0; variacao < variacoes; variacao++) {
-                    Instance instancia = gerador.gerar(perfil, tamanho, variacao);
-                    List<ExecutionRecord> registrosDaInstancia = new ArrayList<>();
+        if (modo == Modo.PERSONALIZADO) {
+            saida.println("Instancias carregadas de " + caminhoInstancias.toAbsolutePath()
+                    + ": " + instanciasPersonalizadas.size());
+            saida.println();
 
-                    for (PartitionAlgorithm algoritmo : algoritmos) {
-                        ExecutionRecord registro;
+            for (Instance instancia : instanciasPersonalizadas) {
+                List<ExecutionRecord> registrosDaInstancia = executarAlgoritmos(
+                        algoritmos, instancia, PERFIL_PERSONALIZADO, runner, limiteExatos);
+                runner.definirReferenciaOtima(registrosDaInstancia);
+                todosRegistros.addAll(registrosDaInstancia);
+                imprimirProgresso(instancia, registrosDaInstancia, saida);
+            }
+        } else {
+            for (InstanceGenerator.Perfil perfil : perfis) {
+                for (int tamanho : tamanhos) {
+                    for (int variacao = 0; variacao < variacoes; variacao++) {
+                        Instance instancia = gerador.gerar(perfil, tamanho, variacao);
+                        List<ExecutionRecord> registrosDaInstancia;
+
                         if (modo == Modo.ESCALABILIDADE) {
-                            String motivoBloqueio = politicaEscalabilidade.getMotivoBloqueio(
-                                    perfil.name(), algoritmo);
-                            if (motivoBloqueio != null) {
-                                registro = ExecutionRecord.falha(
-                                        instancia, perfil.name(), algoritmo.getNome(), algoritmo.isExato(),
-                                        ExecutionRecord.Status.NAO_EXECUTADO, motivoBloqueio);
-                            } else {
-                                registro = runner.executar(algoritmo, instancia, perfil.name());
-                                politicaEscalabilidade.registrar(registro);
+                            registrosDaInstancia = new ArrayList<>();
+                            for (PartitionAlgorithm algoritmo : algoritmos) {
+                                String motivoBloqueio = politicaEscalabilidade.getMotivoBloqueio(
+                                        perfil.name(), algoritmo);
+                                ExecutionRecord registro;
+                                if (motivoBloqueio != null) {
+                                    registro = ExecutionRecord.falha(
+                                            instancia, perfil.name(), algoritmo.getNome(),
+                                            algoritmo.isExato(),
+                                            ExecutionRecord.Status.NAO_EXECUTADO, motivoBloqueio);
+                                } else {
+                                    registro = runner.executar(algoritmo, instancia, perfil.name());
+                                    politicaEscalabilidade.registrar(registro);
+                                }
+                                registrosDaInstancia.add(registro);
                             }
-                        } else if (!deveExecutarNaBateriaPadrao(algoritmo, tamanho)) {
-                            registro = ExecutionRecord.falha(
-                                    instancia, perfil.name(), algoritmo.getNome(), algoritmo.isExato(),
-                                    ExecutionRecord.Status.NAO_EXECUTADO,
-                                    "Corte de seguranca da bateria padrao: algoritmo exponencial limitado a n <= "
-                                            + LIMITE_ALGORITMOS_EXPONENCIAIS + ".");
                         } else {
-                            registro = runner.executar(algoritmo, instancia, perfil.name());
+                            registrosDaInstancia = executarAlgoritmos(
+                                    algoritmos, instancia, perfil.name(), runner, limiteExatos);
                         }
-                        registrosDaInstancia.add(registro);
-                    }
 
-                    runner.definirReferenciaOtima(registrosDaInstancia);
-                    todosRegistros.addAll(registrosDaInstancia);
-                    imprimirProgresso(instancia, registrosDaInstancia, saida);
+                        runner.definirReferenciaOtima(registrosDaInstancia);
+                        todosRegistros.addAll(registrosDaInstancia);
+                        imprimirProgresso(instancia, registrosDaInstancia, saida);
+                    }
                 }
             }
         }
@@ -259,14 +339,32 @@ public class Main {
         return Arrays.stream(args).anyMatch("--gui"::equalsIgnoreCase);
     }
 
-    /** Evita submeter algoritmos exponenciais a instancias grandes demais. */
-    private static boolean deveExecutarNaBateriaPadrao(PartitionAlgorithm algoritmo, int tamanho) {
-        boolean exponencial = algoritmo instanceof BacktrackingPartition
-                || algoritmo instanceof BranchAndBoundPartition;
-        if (exponencial) {
-            return tamanho <= LIMITE_ALGORITMOS_EXPONENCIAIS;
+    /**
+     * Executa os cinco algoritmos sobre uma instancia, aplicando o corte de
+     * seguranca aos algoritmos exponenciais.
+     */
+    private static List<ExecutionRecord> executarAlgoritmos(List<PartitionAlgorithm> algoritmos,
+                                                            Instance instancia, String perfil,
+                                                            ExperimentRunner runner,
+                                                            int limiteExatos) {
+        List<ExecutionRecord> registros = new ArrayList<>(algoritmos.size());
+        for (PartitionAlgorithm algoritmo : algoritmos) {
+            if (ehExponencial(algoritmo) && instancia.getTamanho() > limiteExatos) {
+                registros.add(ExecutionRecord.falha(
+                        instancia, perfil, algoritmo.getNome(), algoritmo.isExato(),
+                        ExecutionRecord.Status.NAO_EXECUTADO,
+                        "Corte de seguranca: algoritmo exponencial limitado a n <= " + limiteExatos
+                                + ". Use --limite-exatos=<n> para alterar."));
+            } else {
+                registros.add(runner.executar(algoritmo, instancia, perfil));
+            }
         }
-        return true;
+        return registros;
+    }
+
+    private static boolean ehExponencial(PartitionAlgorithm algoritmo) {
+        return algoritmo instanceof BacktrackingPartition
+                || algoritmo instanceof BranchAndBoundPartition;
     }
 
     private static int[] tamanhosDoModo(Modo modo) {
@@ -274,6 +372,7 @@ public class Main {
             case RAPIDO -> TAMANHOS_RAPIDO;
             case COMPLETO -> TAMANHOS_COMPLETO;
             case ESCALABILIDADE -> TAMANHOS_ESCALABILIDADE;
+            case PERSONALIZADO -> new int[0];
         };
     }
 
@@ -282,6 +381,7 @@ public class Main {
             case RAPIDO -> "resultados_rapido.csv";
             case COMPLETO -> "resultados.csv";
             case ESCALABILIDADE -> "resultados_escalabilidade.csv";
+            case PERSONALIZADO -> "resultados_personalizado.csv";
         };
     }
 
@@ -291,7 +391,24 @@ public class Main {
             case COMPLETO -> "COMPLETO (bateria integral, tipicamente 1 a 5 minutos)";
             case ESCALABILIDADE ->
                     "ESCALABILIDADE (tamanhos graduais e interrupcao adaptativa)";
+            case PERSONALIZADO -> "PERSONALIZADO (instancias fornecidas em arquivos)";
         };
+    }
+
+    /** Interpreta {@code --limite-exatos=<n>}, validando o valor informado. */
+    private static int lerLimiteExatos(String argumento) {
+        String valor = argumento.substring(OPCAO_LIMITE_EXATOS.length()).trim();
+        int limite;
+        try {
+            limite = Integer.parseInt(valor);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "Valor invalido em --limite-exatos: \"" + valor + "\". Informe um inteiro.");
+        }
+        if (limite < 0) {
+            throw new IllegalArgumentException("--limite-exatos nao pode ser negativo.");
+        }
+        return limite;
     }
 
     private static void imprimirProgresso(Instance instancia, List<ExecutionRecord> registros,

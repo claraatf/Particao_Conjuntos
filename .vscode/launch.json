@@ -40,6 +40,16 @@
             "args": ["--gui"],
             "vmArgs": "-Xmx4g",
             "console": "internalConsole"
+        },
+        {
+            "type": "java",
+            "name": "5. INSTANCIAS PERSONALIZADAS (pasta instancias/)",
+            "request": "launch",
+            "mainClass": "br.edu.taal.particao.Main",
+            "projectName": "particao-conjuntos",
+            "args": ["--instancias"],
+            "vmArgs": "-Xmx4g",
+            "console": "internalConsole"
         }
     ]
 }

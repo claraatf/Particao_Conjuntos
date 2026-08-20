@@ -1,0 +1,8 @@
+# Exemplo 1: instancia simples, um numero por linha.
+# O nome da instancia nos relatorios sera "exemplo_01_basico".
+10
+20
+30
+40
+50
+60

@@ -6,7 +6,11 @@ Projeto da disciplina de Técnicas de Análise e Algoritmos (TAAL).
 > [Como executar](#como-executar), com passo a passo completo para **VS Code**, **IntelliJ IDEA** e
 > **linha de comando**. Existe um caminho de execução que **não exige Maven instalado** —
 > apenas o JDK. Se algo falhar, a seção [Solução de problemas](#solução-de-problemas) cobre os
-> erros mais comuns com a mensagem exata e o que fazer. Também há uma **interface gráfica Swing**
+> erros mais comuns com a mensagem exata e o que fazer.
+>
+> **Para submeter uma bateria de testes própria**, vá direto para
+> [Executando uma bateria de testes própria](#executando-uma-bateria-de-testes-própria): basta
+> copiar os arquivos `.txt` para a pasta `instancias/` e executar um único comando. Também há uma **interface gráfica Swing**
 > opcional para configurar a bateria, acompanhar o progresso e abrir os resultados.
 
 ---
@@ -21,15 +25,16 @@ Projeto da disciplina de Técnicas de Análise e Algoritmos (TAAL).
    - [Opção B — IntelliJ IDEA](#opção-b--intellij-idea-passo-a-passo)
    - [Opção C — Linha de comando sem Maven](#opção-c--linha-de-comando-sem-maven-mais-simples)
    - [Opção D — Linha de comando com Maven](#opção-d--linha-de-comando-com-maven)
-5. [O que você deve ver ao executar](#o-que-você-deve-ver-ao-executar)
-6. [Executando os testes automatizados](#executando-os-testes-automatizados)
-7. [Solução de problemas](#solução-de-problemas)
-8. [Métricas coletadas](#métricas-coletadas)
-9. [Instâncias de teste](#instâncias-de-teste)
-10. [Estrutura do projeto](#estrutura-do-projeto)
-11. [Saída em CSV](#saída-em-csv)
-12. [Reprodutibilidade](#reprodutibilidade)
-13. [Declaração de uso de IA](#declaração-de-uso-de-ia)
+5. [**Executando uma bateria de testes própria**](#executando-uma-bateria-de-testes-própria)
+6. [O que você deve ver ao executar](#o-que-você-deve-ver-ao-executar)
+7. [Executando os testes automatizados](#executando-os-testes-automatizados)
+8. [Solução de problemas](#solução-de-problemas)
+9. [Métricas coletadas](#métricas-coletadas)
+10. [Instâncias de teste](#instâncias-de-teste)
+11. [Estrutura do projeto](#estrutura-do-projeto)
+12. [Saídas em CSV e HTML](#saídas-em-csv-e-html)
+13. [Reprodutibilidade](#reprodutibilidade)
+14. [Declaração de uso de IA](#declaração-de-uso-de-ia)
 
 ---
 
@@ -394,19 +399,235 @@ Todos são opcionais e podem ser combinados em qualquer ordem:
 |-----------|-------------|--------|
 | `--rapido` | executa a bateria reduzida | ausente (bateria completa) |
 | `--escalabilidade` | executa tamanhos graduais com interrupção adaptativa | ausente |
+| `--instancias` | executa os arquivos da pasta `instancias/` | ausente |
+| `--instancias=<caminho>` | executa os arquivos de outra pasta ou um arquivo específico | ausente |
+| `--limite-exatos=<n>` | tamanho máximo em que os algoritmos exponenciais são executados | `26` |
 | `--gui` | abre a interface gráfica Swing | ausente |
 | primeiro número | *seed* do gerador de instâncias | `42` |
 | segundo valor | caminho do arquivo CSV de saída | `resultados/resultados.csv` |
 
-`--rapido` e `--escalabilidade` são mutuamente exclusivos. `--gui` deve ser usado isoladamente,
-pois modo, seed e saída são escolhidos na janela. Quando nenhum caminho é informado, o modo de
-escalabilidade grava `resultados/resultados_escalabilidade.csv`.
+`--rapido`, `--escalabilidade` e `--instancias` são mutuamente exclusivos. `--gui` deve ser usado
+isoladamente, pois modo, seed e saída são escolhidos na janela. Quando nenhum caminho é informado, o
+modo de escalabilidade grava `resultados/resultados_escalabilidade.csv`.
 
 Exemplo com todos os argumentos:
 
 ```bash
 java -Xmx4g -cp build/classes br.edu.taal.particao.Main 7 saida/meu_teste.csv --rapido
 ```
+
+---
+
+## Executando uma bateria de testes própria
+
+Esta seção é destinada a quem quer submeter os cinco algoritmos a **instâncias próprias**, e não às
+geradas automaticamente pelo projeto. Os passos abaixo são autocontidos: basta segui-los na ordem.
+
+Há duas formas, e ambas levam ao mesmo resultado. A **Forma 1** é a recomendada.
+
+---
+
+### Forma 1 — Colocar os arquivos na pasta `instancias/`
+
+**Passo 1.** Abra a pasta do projeto (a que contém o arquivo `pom.xml`). Dentro dela já existe uma
+pasta chamada **`instancias`**. Ela vem vazia de propósito, contendo apenas um `README.md`.
+
+**Passo 2.** Copie para dentro de `instancias/` os arquivos com os seus conjuntos de teste. Cada
+arquivo deve ter extensão **`.txt`** (também são aceitas `.csv`, `.in` e `.dat`) e conter os números
+da instância. O formato completo está descrito em [Formato dos arquivos](#formato-dos-arquivos-de-instância)
+logo abaixo; no caso mais simples, basta uma linha com os números separados por espaço:
+
+```
+10 20 30 40 50 60
+```
+
+Pode colocar quantos arquivos quiser, inclusive organizados em subpastas — todos serão lidos.
+
+**Passo 3.** Execute o comando correspondente ao seu sistema, **a partir da pasta raiz do projeto**:
+
+*Windows (PowerShell):*
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\executar_sem_maven.ps1 -Instancias
+```
+
+*Linux, macOS ou Git Bash:*
+
+```bash
+bash scripts/executar_sem_maven.sh --instancias
+```
+
+O script verifica o JDK, compila o projeto e executa a bateria. Não é necessário ter Maven.
+
+**Passo 4.** Confira os resultados:
+
+| O que | Onde |
+|-------|------|
+| Resumo por algoritmo | impresso no terminal, ao final |
+| Tabela completa com todas as métricas | `resultados/resultados_personalizado.csv` |
+| Dashboard visual (abrir no navegador) | `resultados/resultados_personalizado_dashboard.html` |
+
+---
+
+### Forma 2 — Apontar para um arquivo ou pasta em qualquer lugar
+
+Use esta forma se preferir manter os arquivos fora do projeto — por exemplo, na Área de Trabalho.
+
+Funciona tanto com **uma pasta** quanto com **um único arquivo `.txt`**.
+
+*Windows (PowerShell):*
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\executar_sem_maven.ps1 -CaminhoInstancias "C:\Users\SeuUsuario\Desktop\meus_testes"
+```
+
+*Linux, macOS ou Git Bash:*
+
+```bash
+bash scripts/executar_sem_maven.sh --instancias=/caminho/para/meus_testes
+```
+
+Para um único arquivo, informe o caminho do arquivo em vez da pasta:
+
+```bash
+bash scripts/executar_sem_maven.sh --instancias=/caminho/para/bateria.txt
+```
+
+> Se o caminho tiver espaços, mantenha-o entre aspas.
+
+---
+
+### Formato dos arquivos de instância
+
+O leitor foi feito para ser tolerante: **o que importa são os números**, e a disposição deles no
+arquivo é irrelevante.
+
+| Regra | Detalhe |
+|-------|---------|
+| Valores | inteiros **não negativos** (`0` é aceito; negativos são recusados) |
+| Separadores | espaço, tabulação, quebra de linha, vírgula ou ponto e vírgula — podem ser misturados |
+| Comentários | tudo que vier depois de `#` na linha é ignorado |
+| Linhas em branco | ignoradas |
+| Valor máximo | 2.147.483.647 por elemento |
+| Instâncias por arquivo | uma, a menos que use o separador `---` |
+| Várias instâncias | uma linha com três ou mais hifens (`---`) separa instâncias no mesmo arquivo |
+| Nome nos relatórios | é o nome do arquivo; para definir outro, use `# nome: meu_nome` |
+
+**Exemplo 1 — o mais simples possível** (arquivo `caso1.txt`):
+
+```
+10 20 30 40 50 60
+```
+
+**Exemplo 2 — formatação livre, com comentários:**
+
+```
+# Instância de teste
+# nome: caso_dificil_01
+
+100, 200, 300
+400; 500
+600    700   # comentário no fim da linha
+```
+
+**Exemplo 3 — três instâncias em um único arquivo:**
+
+```
+# nome: caso_a
+10 20 30 40
+
+---
+
+# nome: caso_b
+5 5 5 5 5 5
+
+---
+
+# nome: caso_c
+1000000 999999 1000001 999998
+```
+
+Arquivos de exemplo prontos para usar estão em **`exemplos_instancias/`**. Para executá-los e ver
+como funciona antes de usar os seus próprios arquivos:
+
+```bash
+bash scripts/executar_sem_maven.sh --instancias=exemplos_instancias
+```
+
+---
+
+### Executando pelo VS Code ou IntelliJ
+
+Se preferir usar a IDE em vez do terminal:
+
+**VS Code:** coloque os arquivos em `instancias/`, abra o painel **Run and Debug** (`Ctrl+Shift+D`),
+escolha a configuração **"5. INSTANCIAS PERSONALIZADAS"** e pressione `F5`.
+
+**IntelliJ:** coloque os arquivos em `instancias/`, vá em **Run > Edit Configurations...**, selecione
+a configuração `Main`, escreva `--instancias` no campo **Program arguments**, clique em **OK** e
+execute com o botão ▶.
+
+---
+
+### O que esperar da execução
+
+Para cada instância, os cinco algoritmos são executados e uma linha por algoritmo é impressa:
+
+```
+Instancia caso_a                           (n=    8, soma=146)
+   Backtracking           diferenca=0            tempo=    0.021 ms  estados=93           gap=0.00%
+   BranchAndBound         diferenca=0            tempo=    0.018 ms  estados=61           gap=0.00%
+   ProgramacaoDinamica    diferenca=0            tempo=    0.033 ms  estados=592          gap=0.00%
+   Guloso                 diferenca=0            tempo=    0.005 ms  estados=8            gap=0.00%
+   KarmarkarKarp          diferenca=0            tempo=    0.024 ms  estados=7            gap=0.00%
+```
+
+Três situações são **resultados esperados do experimento, e não falhas do programa**:
+
+| O que aparece | O que significa |
+|---------------|-----------------|
+| `NAO_EXECUTADO` | a instância tem mais de 26 elementos e o algoritmo é exponencial (veja abaixo) |
+| `TEMPO_LIMITE` | o algoritmo passou de 30 segundos naquela instância e foi interrompido |
+| `MEMORIA_INVIAVEL` | a tabela da Programação Dinâmica não caberia na memória (soma total muito alta) |
+
+**Sobre instâncias com mais de 26 elementos:** Backtracking e Branch and Bound são exponenciais, e
+acima desse tamanho consumiriam o tempo limite sem produzir informação nova. Por isso são pulados
+por padrão, com o motivo registrado na coluna `observacao` do CSV. Para forçar a execução em
+instâncias maiores, acrescente `--limite-exatos=<n>`:
+
+```bash
+bash scripts/executar_sem_maven.sh --instancias --limite-exatos=32
+```
+
+*No PowerShell, o parâmetro equivalente é `-LimiteExatos 32`.*
+
+Os três algoritmos restantes (Programação Dinâmica, Guloso e Karmarkar-Karp) são executados em
+qualquer tamanho, respeitando o tempo limite e a memória disponível.
+
+---
+
+### Se algo der errado
+
+O programa valida os arquivos **antes** de começar e, em caso de problema, informa o arquivo, a
+linha e o trecho exato, encerrando com código de saída `1`:
+
+```
+ERRO: Erro no arquivo C:\...\bateria.txt, linha 2: "abc" nao e um numero inteiro. Use # para
+comentarios e separe os valores por espaco, virgula ou quebra de linha.
+
+Consulte instancias/README.md para o formato aceito.
+```
+
+| Mensagem | Causa | Solução |
+|----------|-------|---------|
+| `Nenhum arquivo de instancia encontrado` | a pasta está vazia ou os arquivos têm outra extensão | renomeie os arquivos para `.txt` |
+| `Caminho de instancias nao encontrado` | o caminho informado não existe | verifique o caminho; use aspas se houver espaços |
+| `"..." nao e um numero inteiro` | há texto onde deveria haver número (por exemplo, um cabeçalho de CSV) | remova a linha ou comece-a com `#` |
+| `valor negativo` | há número negativo no arquivo | o problema da partição exige inteiros não negativos |
+| `nao contem nenhum numero` | o arquivo só tem comentários ou está vazio | inclua ao menos um número |
+
+Se colocar arquivos em `instancias/` e executar **sem** a opção `--instancias`, o programa avisa no
+início que eles não serão executados e lembra qual opção usar.
 
 ---
 
@@ -633,6 +854,12 @@ modo de escalabilidade, que testa tamanhos graduais de 10 até 50 com duas varia
 TAAL/
 ├── pom.xml                            # configuração Maven
 ├── README.md
+├── instancias/                        # PASTA PARA BATERIAS DE TESTE PRÓPRIAS
+│   └── README.md                      # formato aceito (a pasta começa vazia)
+├── exemplos_instancias/               # arquivos de exemplo prontos para testar
+│   ├── exemplo_01_basico.txt
+│   ├── exemplo_02_formato_livre.txt
+│   └── exemplo_03_varias_instancias.txt
 ├── .vscode/                           # configurações de execução do VS Code
 │   ├── extensions.json
 │   ├── launch.json
@@ -663,6 +890,8 @@ TAAL/
     │   │   └── TempoLimiteExcedidoException.java
     │   └── experiment/
     │       ├── InstanceGenerator.java         # geração reprodutível de instâncias
+    │       ├── InstanceFileReader.java        # leitura de baterias de teste externas
+    │       ├── InstanceFormatException.java   # erro de formato com arquivo e linha
     │       ├── ExperimentRunner.java          # execução com warm-up e tempo limite
     │       ├── ScalabilityPolicy.java         # interrupção adaptativa por algoritmo/perfil
     │       ├── ExecutionRecord.java           # uma linha da tabela de resultados
@@ -671,6 +900,7 @@ TAAL/
     └── test/java/br/edu/taal/particao/
         ├── PartitionAlgorithmsTest.java       # testes de corretude
         ├── DashboardGeneratorTest.java        # testes da exportação visual
+        ├── experiment/InstanceFileReaderTest.java  # testes do leitor de instâncias externas
         └── ui/ExperimentGuiTest.java          # testes headless da configuração da interface
 ```
 

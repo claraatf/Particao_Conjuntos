@@ -6,12 +6,17 @@
 #   .\scripts\executar_sem_maven.ps1 -Rapido      # bateria reduzida (~10 segundos)
 #   .\scripts\executar_sem_maven.ps1 -Escalabilidade # limites empiricos
 #   .\scripts\executar_sem_maven.ps1 -Interface   # abre a interface grafica
+#   .\scripts\executar_sem_maven.ps1 -Instancias  # executa os arquivos da pasta instancias\
+#   .\scripts\executar_sem_maven.ps1 -CaminhoInstancias "C:\meus_testes"
 #   .\scripts\executar_sem_maven.ps1 -Seed 7 -Xmx 4g
 
 param(
     [switch]$Rapido,
     [switch]$Escalabilidade,
     [switch]$Interface,
+    [switch]$Instancias,
+    [string]$CaminhoInstancias = "",
+    [int]$LimiteExatos = -1,
     [long]$Seed = 42,
     [string]$Xmx = "4g",
     [string]$Saida = ""
@@ -19,10 +24,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$modosSelecionados = @($Rapido.IsPresent, $Escalabilidade.IsPresent, $Interface.IsPresent) |
+$usaInstancias = $Instancias.IsPresent -or ($CaminhoInstancias -ne "")
+
+$modosSelecionados = @($Rapido.IsPresent, $Escalabilidade.IsPresent, $Interface.IsPresent, $usaInstancias) |
         Where-Object { $_ }
 if ($modosSelecionados.Count -gt 1) {
-    Write-Host "ERRO: use apenas -Rapido, -Escalabilidade ou -Interface." -ForegroundColor Red
+    Write-Host "ERRO: use apenas -Rapido, -Escalabilidade, -Interface ou -Instancias." -ForegroundColor Red
     exit 1
 }
 
@@ -75,11 +82,19 @@ if ($Interface) {
     if ($Saida -ne "") { $argumentos += $Saida }
     if ($Rapido) { $argumentos += "--rapido" }
     if ($Escalabilidade) { $argumentos += "--escalabilidade" }
+    if ($CaminhoInstancias -ne "") {
+        $argumentos += "--instancias=$CaminhoInstancias"
+    } elseif ($Instancias) {
+        $argumentos += "--instancias"
+    }
+    if ($LimiteExatos -ge 0) { $argumentos += "--limite-exatos=$LimiteExatos" }
 }
 
 Write-Host ""
 if ($Interface) {
     Write-Host "Abrindo a interface grafica..."
+} elseif ($usaInstancias) {
+    Write-Host "Executando a bateria de instancias fornecida..."
 } else {
     Write-Host "Executando os experimentos..."
 }

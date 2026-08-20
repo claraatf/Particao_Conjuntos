@@ -1,0 +1,15 @@
+# Exemplo 3: tres instancias no mesmo arquivo, separadas por ---
+# Util para descrever uma bateria inteira em um unico arquivo.
+
+# nome: particao_perfeita
+3 1 1 2 2 3
+
+---
+
+# nome: elemento_dominante
+100 1 2 3 4 5
+
+---
+
+# nome: valores_grandes
+1000000 999999 1000001 999998 1000002 999997
